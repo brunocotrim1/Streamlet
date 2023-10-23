@@ -23,33 +23,7 @@ public class ReceivingThread extends Thread {
             ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
             Message message = (Message) inputStream.readObject();
             System.out.println(message);
-
-            switch (message.getType()) {
-                case ALIVE:
-                    alive.incrementAndGet();
-                    break;
-
-                case PROPOSE:
-                    System.out.println("Received PROPOSE");
-                   // BlockTree.addBlock((Block) message.content);
-                    break;
-                case ECHO:
-
-                    break;
-            }
-            //So fazemos echo se for a primeira mensagem ou se for uma mensagem que ainda nao tenhamos visto
-            if ((Streamlet.messageHistory.get(message.getSender()) == null
-                    || Streamlet.messageHistory.get(message.getSender()).getSequence() < message.getSequence())
-            && message.getType() != Type.ALIVE) {
-
-                //Nao mandar echos que contem a propria mensagem sua
-                if(!(message.getType() == Type.ECHO && Streamlet.nodeId == ((Message) message.getContent()).getSender())){
-
-                    Streamlet.messageHistory.put(message.getSender(), message);
-                    Utils.Broadcast(Message.builder().type(Type.ECHO).sender(Streamlet.nodeId)
-                            .content(message).build());
-                }
-            }
+            processMessage(message);
 
 
         } catch (IOException | ClassNotFoundException e) {
@@ -59,6 +33,22 @@ public class ReceivingThread extends Thread {
 
     }
 
+    private void processMessage(Message m) {
+        switch (m.getType()) {
+            case ALIVE:
+                alive.incrementAndGet();
+                break;
+
+            case PROPOSE:
+                System.out.println("Received PROPOSE");
+                // BlockTree.addBlock((Block) message.content);
+                break;
+            case ECHO:
+                m = (Message) m.getContent();
+                processMessage(m);
+                break;
+        }
+    }
     public static int getAlive() {
         return alive.get();
     }

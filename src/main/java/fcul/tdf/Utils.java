@@ -20,13 +20,11 @@ public class Utils {
 
     public static void Broadcast(Message message) {
         for (Node n : Streamlet.nodes.values()) {
-            if(n.getNodeId() == message.getSender() || n.getNodeId() == Streamlet.nodeId
-                    || (message.getType() == Type.ECHO && n.getNodeId() == ((Message) message.getContent()).getSender()))
-                continue;
             System.out.println("BroadCast message" + message+  " to " + n.getNodeId());
             n.sendMessage(message);
         }
     }
+
 
 
     public static Block getGenesisBlock() {
