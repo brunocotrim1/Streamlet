@@ -9,6 +9,7 @@ import fcul.tdf.objects.Transaction;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Base64;
+import java.util.List;
 
 public class Utils {
 
@@ -20,12 +21,19 @@ public class Utils {
 
     public static void Broadcast(Message message) {
         for (Node n : Streamlet.nodes.values()) {
-            System.out.println("BroadCast message" + message+  " to " + n.getNodeId());
+            System.out.println("BroadCast message" + message + " to " + n.getNodeId());
             n.sendMessage(message);
         }
     }
 
-
+    public static void BroadcastExceptX(Message message, List<Integer> exceptions) {
+        for (Node n : Streamlet.nodes.values()) {
+            if (!exceptions.contains(n.getNodeId())) {
+                System.out.println("BroadCast message" + message + " to " + n.getNodeId());
+                n.sendMessage(message);
+            }
+        }
+    }
 
     public static Block getGenesisBlock() {
         return Block.builder()

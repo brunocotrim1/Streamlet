@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
 
 @Data
-@ToString
 @Builder
 public class Block implements java.io.Serializable {
     private byte[] previousHash = new byte[32];

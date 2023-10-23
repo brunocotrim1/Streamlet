@@ -14,6 +14,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import static fcul.tdf.Utils.isLeader;
 
@@ -61,10 +62,16 @@ public class Streamlet {
         System.out.println("Starting consensus");
         if (isLeader(epoch.get(), nodeId, nodesList.size())) {
             System.out.println("I am the leader - Broadcasting genesis block");
-            Utils.Broadcast(Message.builder().type(Type.PROPOSE).build());
+            firstGenesisBlock();
         }
 
 
+    }
+
+    private static void firstGenesisBlock(){
+        Message m = Message.builder().type(Type.PROPOSE).sender(nodeId).sequence(sequence.get())
+                .content(Utils.getGenesisBlock()).build();
+        Utils.Broadcast(m);
     }
 
 

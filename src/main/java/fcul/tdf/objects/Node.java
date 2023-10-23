@@ -47,9 +47,16 @@ public class Node extends Thread {
         try {
             clientSocket = new Socket(address[0], Integer.parseInt(address[1]));
             outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-            if(message.getType() != Type.ECHO && message.getType() != Type.ALIVE) {
-                int sequence = Streamlet.sequence.getAndIncrement();
-                message.setSequence(sequence);
+            if((message.getType() == Type.PROPOSE || message.getType() == Type.VOTE)
+                    && Streamlet.nodeId == message.getSender()) {
+                if(Streamlet.messageHistory.get(Streamlet.nodeId) == null
+                        || Streamlet.messageHistory.get(Streamlet.nodeId).getSequence() < message.getSequence()) {
+                    message.setSequence(Streamlet.sequence.get());
+                    Streamlet.sequence.incrementAndGet();
+                    Streamlet.messageHistory.put(Streamlet.nodeId, message);
+                    //Apenas queremos incrementar a sequencia da mensagem e atualizar o historico se for a primeira vez
+                    // que observamos nossas
+                }
             }
             outputStream.writeObject(message);
             outputStream.flush();
