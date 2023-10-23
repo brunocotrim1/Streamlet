@@ -20,6 +20,7 @@ public class Utils {
     }
 
     public static void Broadcast(Message message) {
+
         for (Node n : Streamlet.nodes.values()) {
             System.out.println("BroadCast message" + message + " to " + n.getNodeId());
             n.sendMessage(message);
