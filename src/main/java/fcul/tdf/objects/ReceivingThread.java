@@ -25,7 +25,7 @@ public class ReceivingThread extends Thread {
         try {
             ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
             Message message = (Message) inputStream.readObject();
-           // System.out.println(message);
+            // System.out.println(message);
             processMessage(message);
 /*            inputStream.close();
             clientSocket.close();*/
@@ -39,7 +39,7 @@ public class ReceivingThread extends Thread {
 
     private void processMessage(Message m) {
         System.out.println("Processing message " + m);
-        if (m.getType() == Type.ECHO) {
+        if (m.getType() == Type.ECHO && m.getSender() != Streamlet.nodeId) {
             processMessage((Message) m.getContent());
             return;
         }
@@ -60,8 +60,9 @@ public class ReceivingThread extends Thread {
                 System.out.println("Received PROPOSE");
                 // BlockTree.addBlock((Block) message.content);
                 Streamlet.messageHistory.put(m.getSender(), m);
-                BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(),
-                        List.of(m.getSender(), Streamlet.nodeId));
+                if (m.getSender() != Streamlet.nodeId)
+                    BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(),
+                            List.of(m.getSender(), Streamlet.nodeId));
                 //Fazer broadcast a todos menos a quem produzio e a nos proprios
                 break;
             case VOTE:
