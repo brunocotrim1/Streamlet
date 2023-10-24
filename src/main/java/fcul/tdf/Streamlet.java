@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
@@ -70,8 +71,9 @@ public class Streamlet {
 
     private static void firstGenesisBlock(){
         Message m = Message.builder().type(Type.PROPOSE).sender(nodeId).sequence(sequence.get())
-                .content(Utils.getGenesisBlock()).build();
+                .content(Utils.getGenesisBlock()).additionalInfo(Instant.now().plusSeconds(5)).build();
         Utils.Broadcast(m);
+        System.out.println("Broadcasted genesis block");
     }
 
 

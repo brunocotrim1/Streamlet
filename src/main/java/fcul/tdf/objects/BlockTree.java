@@ -14,4 +14,8 @@ public class BlockTree {
             BlockTree.put(block.getEpoch(), List.of(block));
         }
     }
+
+    public static boolean verifyGenesisBlock(Block block){
+        return block.getEpoch() == 0 && block.getLength() == 0;
+    }
 }

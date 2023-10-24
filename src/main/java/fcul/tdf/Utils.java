@@ -14,11 +14,13 @@ import java.util.List;
 public class Utils {
 
     public static boolean isLeader(int epoch, int leader, int nodeSize) {
-        // You can use any constants for the XOR operation
-        int xorConstant = 42;
-        return (epoch ^ xorConstant) % nodeSize == leader;
+        int hash = epoch * 31; // Use any hash code generation method
+        int modulo = hash % nodeSize;
+        if (modulo < 0) {
+            modulo += nodeSize; // Ensure it's non-negative
+        }
+            return modulo == leader;
     }
-
     public static void Broadcast(Message message) {
 
         for (Node n : Streamlet.nodes.values()) {

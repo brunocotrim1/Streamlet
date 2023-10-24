@@ -15,4 +15,5 @@ public class Message implements Serializable {
     Type type;
     int sender;
     long sequence;
+    Object additionalInfo;
 }
