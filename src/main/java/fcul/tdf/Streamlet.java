@@ -29,7 +29,7 @@ public class Streamlet {
     public static ExecutorService executor;
     public static int nodeId;
     public static AtomicInteger epoch = new AtomicInteger(0);
-    public static AtomicInteger sequence = new AtomicInteger(0);
+    public static final AtomicInteger sequence = new AtomicInteger(0);
     public static Map<Integer, Message> messageHistory = new HashMap<>();
     public static BlockTree blockTree = new BlockTree();
 
@@ -72,10 +72,12 @@ public class Streamlet {
     }
 
     private static void firstGenesisBlock(){
-        Message m = Message.builder().type(Type.PROPOSE).sender(nodeId).sequence(sequence.get())
-                .content(Utils.getGenesisBlock()).additionalInfo(Instant.now().plusSeconds(5)).build();
-        Utils.Broadcast(m);
-        System.out.println("Broadcasted genesis block");
+        synchronized (sequence){
+            Message m = Message.builder().type(Type.PROPOSE).sender(nodeId).sequence(sequence.get())
+                    .content(Utils.getGenesisBlock()).additionalInfo(Instant.now().plusSeconds(5)).build();
+            Utils.Broadcast(m);
+            System.out.println("Broadcasted genesis block");
+        }
     }
 
 

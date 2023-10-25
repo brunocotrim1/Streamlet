@@ -3,6 +3,7 @@ package fcul.tdf.objects;
 import fcul.tdf.Streamlet;
 import fcul.tdf.Utils;
 import fcul.tdf.enums.Type;
+import lombok.Synchronized;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -48,14 +49,17 @@ public class ReceivingThread extends Thread {
             processMessage((Message) m.getContent());
             return;
         }
-        if ((Streamlet.messageHistory.get(m.getSender()) != null &&
-                Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence())
-                && m.sender != Streamlet.nodeId) {
+     //   System.out.println("Processing message " + m);
+        if (Streamlet.messageHistory.get(m.getSender()) != null &&
+                Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence()) {
             // Se ja tivermos visto a mensagem, nao fazemos nada
-         //   System.out.println("Message already processed");
+             // System.out.println("Message already processed");
             return;
-        } else
-            Streamlet.messageHistory.put(Streamlet.nodeId, m);
+        }
+        if(m.getType() != Type.ALIVE){
+            Streamlet.messageHistory.put(m.sender, m);
+        }
+
         switch (m.getType()) {
             case ALIVE:
                 alive.incrementAndGet();
@@ -64,10 +68,11 @@ public class ReceivingThread extends Thread {
             case PROPOSE:
                 try {
                     // BlockTree.addBlock((Block) message.content);
-                    System.out.println("Received PROPOSE" + (Block)m.getContent());
+                    System.out.println("Received PROPOSE" + (Block) m.getContent());
                     Streamlet.messageHistory.put(m.getSender(), m);
                     if (m.getSender() != Streamlet.nodeId)
-                        BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(), List.of(m.getSender(), Streamlet.nodeId));
+                        BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
+                                , List.of(m.getSender(), Streamlet.nodeId));
                     //Fazer broadcast a todos menos a quem produzio e a nos propriosSystem.out.println(m);
                     if (BlockTree.verifyGenesisBlock((Block) m.getContent())) {
                         Streamlet.epoch.getAndIncrement();
@@ -77,16 +82,20 @@ public class ReceivingThread extends Thread {
                     e.printStackTrace();
                 }
                 if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
-                    Broadcast(Message.builder().type(Type.VOTE)
-                            .sequence(Streamlet.sequence.get()).content(m).build());
+                    System.out.println("Sending VOTE");
+                    synchronized (Streamlet.sequence) {
+                        Broadcast(Message.builder().type(Type.VOTE)
+                                .sequence(Streamlet.sequence.get())
+                                .sender(Streamlet.nodeId).content(m).build());
+                        Streamlet.sequence.incrementAndGet();
+                    }
                 }
                 Streamlet.blockTree.printFinalizedChain();
-
                 break;
             case VOTE:
                 System.out.println("Received VOTE + " + m.getSender() + " " + m.getSequence() + Streamlet.messageHistory);
-                BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(), List.of(m.getSender(),
-                        Streamlet.nodeId));
+                BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
+                        , List.of(m.getSender(), Streamlet.nodeId));
                 Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
                 break;
         }
@@ -106,11 +115,13 @@ public class ReceivingThread extends Thread {
                 e.printStackTrace();
 
             }
-
-            Message m = Message.builder().type(Type.PROPOSE).sender(Streamlet.nodeId)
-                    .sequence(Streamlet.sequence.get()).content(block).build();
-            Broadcast(m);
-            System.out.print("I am the leader - Broadcasting block");
+            synchronized (Streamlet.sequence) {
+                Message m = Message.builder().type(Type.PROPOSE).sequence(Streamlet.sequence.get())
+                        .sender(Streamlet.nodeId).content(block).build();
+                Streamlet.sequence.incrementAndGet();
+                Broadcast(m);
+                System.out.print("I am the leader - Broadcasting block");
+            }
         }
         System.out.println();
         Streamlet.epoch.getAndIncrement();

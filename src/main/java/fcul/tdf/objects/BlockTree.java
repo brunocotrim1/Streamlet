@@ -13,31 +13,39 @@ public class BlockTree {
         try {
 
 
-        block.reset();
-        if (block.epoch == 0 && Utils.isLeader(0, sender, Streamlet.nodesList.size())) {
-            BlockTree.put(0, List.of(block));
-            return true;
-        }
-        if (!Utils.isLeader(block.epoch, sender, Streamlet.nodesList.size())) {
-            return false;
-        }
-        List<Block> longestChain = longestNotarizedChain();
-        if (!Arrays.equals(longestChain.get(longestChain.size() - 1).hashBlock(), block.getPreviousHash())) {
-            return false;
-        }
-        if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
-            BlockTree.put(0, List.of(block));
-        } else {
-            //Se o tamanho do block for de uma cadeia imediatamente a seguir à maior cadeia
-            if (BlockTree.containsKey(block.getLength())) {
-                BlockTree.get(block.getLength()).add(block);
-            } else {
-                BlockTree.put(block.getLength(), List.of(block));
+            block.reset();
+            if (block.epoch == 0 && Utils.isLeader(0, sender, Streamlet.nodesList.size())) {
+                List<Block> blockList = new ArrayList<>();
+                blockList.add(block);
+                BlockTree.put(0, blockList);
+                return true;
             }
-        }
-        System.out.println("Added block to tree" + "size: " + BlockTree.size());
-        checkFinalized(longestChain);
-        return true;
+            if (!Utils.isLeader(block.epoch, sender, Streamlet.nodesList.size())) {
+                return false;
+            }
+            List<Block> longestChain = longestNotarizedChain();
+            if (!Arrays.equals(longestChain.get(longestChain.size() - 1).hashBlock(), block.getPreviousHash())) {
+                return false;
+            }
+            if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
+                List<Block> blockList = new ArrayList<>();
+                blockList.add(block);
+                BlockTree.put(0, blockList);
+            } else {
+                //Se o tamanho do block for de uma cadeia imediatamente a seguir à maior cadeia
+                if (BlockTree.containsKey(block.getLength())) {
+                    List<Block> blockList = BlockTree.get(block.getLength());
+                    blockList.add(block);
+                } else {
+                    List<Block> blockList = new ArrayList<>();
+                    blockList.add(block);
+                    BlockTree.put(block.getLength(), blockList);
+                }
+
+            }
+            System.out.println("Added block to tree" + "size: " + BlockTree.size());
+            checkFinalized(longestChain);
+            return true;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
@@ -57,7 +65,9 @@ public class BlockTree {
         if ((lastEpoch - secondLastEpoch == 1) && (secondLastEpoch - thirdLastEpoch == 1)) {
             HashMap<Integer, List<Block>> newBlockTree = new HashMap<>();
             for (int i = 0; i < longestChain.size(); i++) {
-                newBlockTree.put(i, List.of(longestChain.get(i)));
+                List<Block> blockList = new ArrayList<>();
+                blockList.add(longestChain.get(i));
+                newBlockTree.put(i, blockList);
             }
             BlockTree = newBlockTree;
         }
@@ -70,12 +80,16 @@ public class BlockTree {
 
     private synchronized List<Block> RecursiveLongestNotarizedChain(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
         refreshVotes();
-        if(lastBlock == null && index != 0){
+/*        if (lastBlock == null && index != 0) {
             lastBlock = blockMap.get(index).get(0);
-        }
-        if(blockMap.size() == 1){
+        }*/
+        if (blockMap.size() == 1) {
             return blockMap.get(0);
         }
+        if(index == 0){
+            return RecursiveLongestNotarizedChain(index + 1, blockMap, blockMap.get(index).get(0));
+        }
+
         if (index == blockMap.size()) {
             return Collections.emptyList(); // Return an empty list for an empty map
         }
@@ -83,10 +97,17 @@ public class BlockTree {
         List<List<Block>> chains = new ArrayList<>();
 
         for (Block block : blockMap.get(index)) {
+            if (block.epoch == 0) {
+                continue;
+            }
+            boolean equalToLast = Arrays.equals(block.getPreviousHash(), lastBlock.hashBlock());
+            boolean isNotarized = isNotarized(block);
             if (Arrays.equals(block.getPreviousHash(), lastBlock.hashBlock()) && isNotarized(block)) {
 
                 if (index == blockMap.size() - 1) {
-                    return List.of(block);
+                    List<Block> blockList = new ArrayList<>();
+                    blockList.add(block);
+                    return blockList;
                 } else {
                     chains.add(RecursiveLongestNotarizedChain(index + 1, blockMap, block));
                 }
@@ -128,7 +149,11 @@ public class BlockTree {
         if (!found) {
             if (epochVotes.containsKey(block.getEpoch())) {
                 epochVotes.get(block.getEpoch()).add(sender);
-            } else epochVotes.put(block.getEpoch(), List.of(sender));
+            } else {
+                ArrayList<Integer> senders = new ArrayList<>();
+                senders.add(sender);
+                epochVotes.put(block.getEpoch(), senders);
+            }
         }
     }
 
@@ -141,7 +166,7 @@ public class BlockTree {
                             b.votes.add(i);
                         }
                     }
-                    epochVotes.remove(epoch);
+                   // epochVotes.remove(epoch);
                 }
             }
         }
@@ -156,11 +181,9 @@ public class BlockTree {
     }
 
     public synchronized Block pruposeBlock() {
+        System.out.println(fcul.tdf.objects.BlockTree.BlockTree);
         List<Block> longestChain = longestNotarizedChain();
-        return Block.builder()
-                .epoch(Streamlet.epoch.get())
-                .length(longestChain.size())
-                .previousHash(longestChain.get(longestChain.size() - 1).hashBlock())
-                .build();
+        return Block.builder().epoch(Streamlet.epoch.get()).length(longestChain.size())
+                .previousHash(longestChain.get(longestChain.size() - 1).hashBlock()).build();
     }
 }

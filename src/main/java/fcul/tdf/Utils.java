@@ -19,8 +19,8 @@ public class Utils {
     }
 
     public static void Broadcast(Message message) {
-        if (message.getType() != Type.ECHO)
-            System.out.println("Broadcasting + " + message.getType() + " " + message.getSender() + " " + message.getSequence());
+       // if (message.getType() != Type.ECHO)
+          //  System.out.println("Broadcasting + " + message.getType() + " " + message.getSender() + " " + message.getSequence());
         for (Node n : Streamlet.nodes.values()) {
             //  System.out.println("BroadCast message" + message + " to " + n.getNodeId());
             n.sendMessage(message);
@@ -28,8 +28,8 @@ public class Utils {
     }
 
     public static void BroadcastExceptX(Message message, List<Integer> exceptions) {
-        if (message.getType() != Type.ECHO)
-            System.out.println("Broadcasting + " + message.getType() + " " + message.getSender() + " " + message.getSequence());
+       // if (message.getType() != Type.ECHO)
+          //  System.out.println("Broadcasting + " + message.getType() + " " + message.getSender() + " " + message.getSequence());
 
         for (Node n : Streamlet.nodes.values()) {
             if (!exceptions.contains(n.getNodeId())) {
