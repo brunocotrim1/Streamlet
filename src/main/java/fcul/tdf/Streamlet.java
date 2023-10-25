@@ -1,6 +1,7 @@
 package fcul.tdf;
 
 import fcul.tdf.enums.Type;
+import fcul.tdf.objects.BlockTree;
 import fcul.tdf.objects.Message;
 import fcul.tdf.objects.Node;
 import fcul.tdf.objects.ReceivingThread;
@@ -30,6 +31,7 @@ public class Streamlet {
     public static AtomicInteger epoch = new AtomicInteger(0);
     public static AtomicInteger sequence = new AtomicInteger(0);
     public static Map<Integer, Message> messageHistory = new HashMap<>();
+    public static BlockTree blockTree = new BlockTree();
 
     public static void main(String[] args) throws IOException {
         readArgs(args);
@@ -61,7 +63,7 @@ public class Streamlet {
         }
         System.out.println("All nodes connected");
         System.out.println("Starting consensus");
-        if (isLeader(epoch.get(), nodeId, nodesList.size())) {
+        if (isLeader(0, nodeId, nodesList.size())) {
             System.out.println("I am the leader - Broadcasting genesis block");
             firstGenesisBlock();
         }

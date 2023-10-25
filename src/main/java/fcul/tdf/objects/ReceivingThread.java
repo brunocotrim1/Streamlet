@@ -31,7 +31,7 @@ public class ReceivingThread extends Thread {
         try {
             ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
             Message message = (Message) inputStream.readObject();
-            // System.out.println(message);
+            //System.out.println(message);
             processMessage(message);
 /*            inputStream.close();
             clientSocket.close();*/
@@ -44,41 +44,50 @@ public class ReceivingThread extends Thread {
     }
 
     private void processMessage(Message m) {
-        System.out.println("Processing message " + m);
         if (m.getType() == Type.ECHO && m.getSender() != Streamlet.nodeId) {
             processMessage((Message) m.getContent());
             return;
         }
-        if ((Streamlet.messageHistory.get(m.getSender()) != null
-                && Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence())
+        if ((Streamlet.messageHistory.get(m.getSender()) != null &&
+                Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence())
                 && m.sender != Streamlet.nodeId) {
             // Se ja tivermos visto a mensagem, nao fazemos nada
-            System.out.println("Already seen message " + m);
+         //   System.out.println("Message already processed");
             return;
-        }
-
+        } else
+            Streamlet.messageHistory.put(Streamlet.nodeId, m);
         switch (m.getType()) {
             case ALIVE:
                 alive.incrementAndGet();
                 break;
 
             case PROPOSE:
-                System.out.println("Received PROPOSE");
-                // BlockTree.addBlock((Block) message.content);
-                Streamlet.messageHistory.put(m.getSender(), m);
-                if (m.getSender() != Streamlet.nodeId)
-                    BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(),
-                            List.of(m.getSender(), Streamlet.nodeId));
-                //Fazer broadcast a todos menos a quem produzio e a nos proprios
-                if (BlockTree.verifyGenesisBlock((Block) m.getContent())) {
-                    Streamlet.epoch.getAndIncrement();
-                    initiateEpoch((Instant) m.getAdditionalInfo());
+                try {
+                    // BlockTree.addBlock((Block) message.content);
+                    System.out.println("Received PROPOSE" + (Block)m.getContent());
+                    Streamlet.messageHistory.put(m.getSender(), m);
+                    if (m.getSender() != Streamlet.nodeId)
+                        BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(), List.of(m.getSender(), Streamlet.nodeId));
+                    //Fazer broadcast a todos menos a quem produzio e a nos propriosSystem.out.println(m);
+                    if (BlockTree.verifyGenesisBlock((Block) m.getContent())) {
+                        Streamlet.epoch.getAndIncrement();
+                        initiateEpoch((Instant) m.getAdditionalInfo());
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
+                if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
+                    Broadcast(Message.builder().type(Type.VOTE)
+                            .sequence(Streamlet.sequence.get()).content(m).build());
+                }
+                Streamlet.blockTree.printFinalizedChain();
+
                 break;
             case VOTE:
-
-                BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(),
-                        List.of(m.getSender(), Streamlet.nodeId));
+                System.out.println("Received VOTE + " + m.getSender() + " " + m.getSequence() + Streamlet.messageHistory);
+                BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build(), List.of(m.getSender(),
+                        Streamlet.nodeId));
+                Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
                 break;
         }
     }
@@ -88,10 +97,22 @@ public class ReceivingThread extends Thread {
     }
 
     public void epoch() {
-        System.out.println("Epoch + " + Streamlet.epoch.get() + " Started");
+        System.out.print("Epoch + " + Streamlet.epoch.get() + " Started     ");
         if (Utils.isLeader(Streamlet.epoch.get(), Streamlet.nodeId, Streamlet.nodes.size())) {
-            System.out.println("I am the leader - Broadcasting genesis block");
+            Block block = null;
+            try {
+                block = Streamlet.blockTree.pruposeBlock();
+            } catch (Exception e) {
+                e.printStackTrace();
+
+            }
+
+            Message m = Message.builder().type(Type.PROPOSE).sender(Streamlet.nodeId)
+                    .sequence(Streamlet.sequence.get()).content(block).build();
+            Broadcast(m);
+            System.out.print("I am the leader - Broadcasting block");
         }
+        System.out.println();
         Streamlet.epoch.getAndIncrement();
     }
 
@@ -101,8 +122,7 @@ public class ReceivingThread extends Thread {
         while (true) {
             Instant currentInstant = Instant.now();
             if (currentInstant.isAfter(epochStart)) {
-                executorService.scheduleAtFixedRate(this::epoch, 0,
-                        Streamlet.epochDelta, TimeUnit.SECONDS);
+                executorService.scheduleAtFixedRate(this::epoch, 0, Streamlet.epochDelta, TimeUnit.SECONDS);
                 break; // Exit the loop when the instant has arrived
             }
             try {

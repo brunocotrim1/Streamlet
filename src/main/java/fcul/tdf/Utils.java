@@ -14,25 +14,26 @@ import java.util.List;
 public class Utils {
 
     public static boolean isLeader(int epoch, int leader, int nodeSize) {
-        int hash = epoch * 31; // Use any hash code generation method
-        int modulo = hash % nodeSize;
-        if (modulo < 0) {
-            modulo += nodeSize; // Ensure it's non-negative
-        }
-            return modulo == leader;
+        int hash = (epoch) % nodeSize;
+        return hash == leader;
     }
-    public static void Broadcast(Message message) {
 
+    public static void Broadcast(Message message) {
+        if (message.getType() != Type.ECHO)
+            System.out.println("Broadcasting + " + message.getType() + " " + message.getSender() + " " + message.getSequence());
         for (Node n : Streamlet.nodes.values()) {
-            System.out.println("BroadCast message" + message + " to " + n.getNodeId());
+            //  System.out.println("BroadCast message" + message + " to " + n.getNodeId());
             n.sendMessage(message);
         }
     }
 
     public static void BroadcastExceptX(Message message, List<Integer> exceptions) {
+        if (message.getType() != Type.ECHO)
+            System.out.println("Broadcasting + " + message.getType() + " " + message.getSender() + " " + message.getSequence());
+
         for (Node n : Streamlet.nodes.values()) {
             if (!exceptions.contains(n.getNodeId())) {
-                System.out.println("BroadCast message" + message + " to " + n.getNodeId());
+                //System.out.println("BroadCast message" + message + " to " + n.getNodeId());
                 n.sendMessage(message);
             }
         }
@@ -40,6 +41,7 @@ public class Utils {
 
     public static Block getGenesisBlock() {
         return Block.builder()
+                .previousHash(new byte[32])
                 .epoch(0)
                 .length(0)
                 .build();

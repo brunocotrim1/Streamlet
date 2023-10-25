@@ -31,7 +31,7 @@ public class Node extends Thread {
                 if (!messageQueue.isEmpty()) {
                     Message message = messageQueue.poll();
                     if (networkSend(message, address)) {
-                        System.out.println("Sending message " + message + " to " + nodeId);
+                        //System.out.println("Sending message " + message + " to " + nodeId);
                     } else {
                         messageQueue.addFirst(message);
                     }
