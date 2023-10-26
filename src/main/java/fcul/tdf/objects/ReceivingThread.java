@@ -105,25 +105,26 @@ public class ReceivingThread extends Thread {
     }
 
     public void epoch() {
-        if (Utils.isLeader(Streamlet.epoch.get(), Streamlet.nodeId, Streamlet.nodes.size())) {
-            Block block = null;
-            try {
-                block = Streamlet.blockTree.pruposeBlock();
-            } catch (Exception e) {
-                e.printStackTrace();
+        synchronized (Streamlet.sequence) {
+            if (Utils.isLeader(Streamlet.epoch.get(), Streamlet.nodeId, Streamlet.nodes.size())) {
+                Block block = null;
+                try {
+                    block = Streamlet.blockTree.pruposeBlock();
+                } catch (Exception e) {
+                    e.printStackTrace();
 
-            }
-            synchronized (Streamlet.sequence) {
+                }
+
                 Message m = Message.builder().type(Type.PROPOSE).sequence(Streamlet.sequence.get())
                         .sender(Streamlet.nodeId).content(block).build();
                 Streamlet.sequence.incrementAndGet();
                 Broadcast(m);
-                System.out.println("Epoch" + " "+ Streamlet.epoch.get() + " Started. Broadcasting block " + block);
-            }
-        }else
-            System.out.println("Epoch + " + Streamlet.epoch.get() + " Started");
-        System.out.println();
-        Streamlet.epoch.getAndIncrement();
+                System.out.println("Epoch" + " " + Streamlet.epoch.get() + " Started. Broadcasting block " + block);
+            } else
+                System.out.println("Epoch + " + Streamlet.epoch.get() + " Started");
+            System.out.println();
+            Streamlet.epoch.getAndIncrement();
+        }
     }
 
 
