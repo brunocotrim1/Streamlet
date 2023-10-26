@@ -68,7 +68,7 @@ public class ReceivingThread extends Thread {
             case PROPOSE:
                 try {
                     // BlockTree.addBlock((Block) message.content);
-                    System.out.println("Received PROPOSE" + (Block) m.getContent());
+                    System.out.println("Received PROPOSE " + (Block) m.getContent());
                     Streamlet.messageHistory.put(m.getSender(), m);
                     if (m.getSender() != Streamlet.nodeId)
                         BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
@@ -90,10 +90,9 @@ public class ReceivingThread extends Thread {
                         Streamlet.sequence.incrementAndGet();
                     }
                 }
-                Streamlet.blockTree.printFinalizedChain();
                 break;
             case VOTE:
-                System.out.println("Received VOTE + " + m.getSender() + " " + m.getSequence() + Streamlet.messageHistory);
+           //     System.out.println("Received VOTE + " + m.getSender() + " " + m.getSequence() + Streamlet.messageHistory);
                 BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
                         , List.of(m.getSender(), Streamlet.nodeId));
                 Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
@@ -106,7 +105,6 @@ public class ReceivingThread extends Thread {
     }
 
     public void epoch() {
-        System.out.print("Epoch + " + Streamlet.epoch.get() + " Started     ");
         if (Utils.isLeader(Streamlet.epoch.get(), Streamlet.nodeId, Streamlet.nodes.size())) {
             Block block = null;
             try {
@@ -120,9 +118,10 @@ public class ReceivingThread extends Thread {
                         .sender(Streamlet.nodeId).content(block).build();
                 Streamlet.sequence.incrementAndGet();
                 Broadcast(m);
-                System.out.print("I am the leader - Broadcasting block");
+                System.out.println("Epoch" + " "+ Streamlet.epoch.get() + " Started. Broadcasting block " + block);
             }
-        }
+        }else
+            System.out.println("Epoch + " + Streamlet.epoch.get() + " Started");
         System.out.println();
         Streamlet.epoch.getAndIncrement();
     }

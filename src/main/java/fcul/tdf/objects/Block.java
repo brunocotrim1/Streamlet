@@ -48,7 +48,7 @@ public class Block implements java.io.Serializable {
 
     public String toString() {
         return "Block{" +
-                ", epoch=" + epoch +
+                " epoch=" + epoch +
                 ", length=" + length +
                 '}';
     }
