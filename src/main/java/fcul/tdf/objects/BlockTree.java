@@ -7,7 +7,7 @@ import java.util.*;
 
 public class BlockTree {
     public static Map<Integer, List<Block>> BlockTree = new HashMap<>();
-    public Map<Integer, List<Integer>> epochVotes = new HashMap<>();
+    public Map<String, List<Integer>> epochVotes = new HashMap<>();
 
     public synchronized boolean addBlock(Block block, int sender) {
         try {
@@ -158,21 +158,23 @@ public class BlockTree {
             } else {
                 ArrayList<Integer> senders = new ArrayList<>();
                 senders.add(sender);
-                epochVotes.put(block.getEpoch(), senders);
+                epochVotes.put(Base64.getEncoder().encodeToString(block.hashBlock()), senders);
             }
         }
     }
 
     public synchronized void refreshVotes() {
-        for (int epoch : epochVotes.keySet()) {
-            for (List<Block> blocks : BlockTree.values()) {
-                for (Block b : blocks) {
-                    for (int i : epochVotes.get(epoch)) {
-                        if (!b.votes.contains(i)) {
-                            b.votes.add(i);
-                        }
+        for(List<Block> blockList : BlockTree.values()){
+            for(Block block : blockList){
+                if(block.epoch == 0 || block.getLength() == 0)
+                    continue;
+                List<Integer> votes = epochVotes.get(block.hashBlock());
+                if(votes == null)
+                    continue;
+                for(int vote : votes){
+                    if(!block.votes.contains(vote)){
+                        block.votes.add(vote);
                     }
-                   // epochVotes.remove(epoch);
                 }
             }
         }
@@ -187,9 +189,9 @@ public class BlockTree {
     }
 
     public synchronized Block pruposeBlock() {
-        List<Block> longestChain = longestNotarizedChain();
-        printFinalizedChain();
-        return Block.builder().epoch(Streamlet.epoch.get()).length(longestChain.size())
-                .previousHash(longestChain.get(longestChain.size() - 1).hashBlock()).build();
+            List<Block> longestChain = longestNotarizedChain();
+            printFinalizedChain();
+            return Block.builder().epoch(Streamlet.epoch.get()).length(longestChain.size())
+                    .previousHash(longestChain.get(longestChain.size() - 1).hashBlock()).build();
     }
 }

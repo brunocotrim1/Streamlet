@@ -112,7 +112,6 @@ public class ReceivingThread extends Thread {
                     block = Streamlet.blockTree.pruposeBlock();
                 } catch (Exception e) {
                     e.printStackTrace();
-
                 }
 
                 Message m = Message.builder().type(Type.PROPOSE).sequence(Streamlet.sequence.get())
