@@ -36,8 +36,8 @@ public class ReceivingThread extends Thread {
             Message message = (Message) inputStream.readObject();
             //System.out.println(message);
             processMessage(message);
-/*            inputStream.close();
-            clientSocket.close();*/
+            inputStream.close();
+            clientSocket.close();
 
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -78,7 +78,6 @@ public class ReceivingThread extends Thread {
                 if (BlockTree.verifyGenesisBlock((Block) m.getContent())) {
                     BlockTree.BlockTree.put(0, new ArrayList<>(Arrays.asList(new Block[]{(Block) m.getContent()})));
                     Streamlet.epoch.getAndIncrement();
-                    System.out.println("aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
                     initiateEpoch((Instant) m.getAdditionalInfo());
                 }else if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
                     System.out.println("Sending VOTE" + (Block) m.getContent());

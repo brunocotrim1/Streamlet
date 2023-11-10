@@ -47,10 +47,10 @@ public class Block implements java.io.Serializable {
     }
 
     public String toString() {
-        return "Block{" +
+        return "B(" +
                 "epoch=" + epoch +
                 ", length=" + length +
-                "," + votes+
+                ", votes=" + votes+
                 '}';
     }
 

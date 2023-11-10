@@ -49,8 +49,8 @@ public class Node extends Thread {
             outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
             outputStream.writeObject(message);
             outputStream.flush();
-/*            outputStream.close();
-            clientSocket.close();*/
+            outputStream.close();
+            clientSocket.close();
             return true;
         } catch (IOException e) {
             try {
