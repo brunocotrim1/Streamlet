@@ -3,20 +3,19 @@ package fcul.tdf.objects;
 import fcul.tdf.Streamlet;
 import fcul.tdf.Utils;
 import fcul.tdf.enums.Type;
-import lombok.Synchronized;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.net.Socket;
 import java.time.Instant;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import static fcul.tdf.Streamlet.*;
 import static fcul.tdf.Utils.Broadcast;
 import static fcul.tdf.Utils.BroadcastExceptX;
 
@@ -47,7 +46,7 @@ public class ReceivingThread extends Thread {
     }
 
     private void processMessage(Message m) {
-        if (m.getType() == Type.ECHO && m.getSender() != Streamlet.nodeId) {
+        if (m.getType() == Type.ECHO && m.getSender() != nodeId) {
             processMessage((Message) m.getContent());
             return;
         }
@@ -71,12 +70,12 @@ public class ReceivingThread extends Thread {
                 // BlockTree.addBlock((Block) message.content);
                 System.out.println("Received PROPOSE " + (Block) m.getContent());
                 Streamlet.messageHistory.put(m.getSender(), m);
-                if (m.getSender() != Streamlet.nodeId)
+                if (m.getSender() != nodeId)
                     BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
-                            , List.of(m.getSender(), Streamlet.nodeId));
+                            , List.of(m.getSender(), nodeId));
                 //Fazer broadcast a todos menos a quem produzio e a nos propriosSystem.out.println(m);
                 if (BlockTree.verifyGenesisBlock((Block) m.getContent())) {
-                    BlockTree.BlockTree.put(0, new ArrayList<>(Arrays.asList(new Block[]{(Block) m.getContent()})));
+                    blockTree.blockTree.put(0, new ArrayList<>(Arrays.asList(new Block[]{(Block) m.getContent()})));
                     Streamlet.epoch.getAndIncrement();
                     initiateEpoch((Instant) m.getAdditionalInfo());
                 }else if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
@@ -84,7 +83,7 @@ public class ReceivingThread extends Thread {
                     synchronized (Streamlet.sequence) {
                         Broadcast(Message.builder().type(Type.VOTE)
                                 .sequence(Streamlet.sequence.get())
-                                .sender(Streamlet.nodeId).content(m).build());
+                                .sender(nodeId).content(m).build());
                         Streamlet.sequence.incrementAndGet();
                     }
                 }
@@ -92,9 +91,14 @@ public class ReceivingThread extends Thread {
             case VOTE:
                 System.out.println("Received VOTE + " + m.getContent());
                 BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
-                        , List.of(m.getSender(), Streamlet.nodeId));
+                        , List.of(m.getSender(), nodeId));
                 Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
                 break;
+            case TRANSACTION:
+                List<Transaction> transactions = (List<Transaction>) m.getContent();
+                blockTree.addUnverifiedTransactions(transactions);
+                break;
+
         }
     }
 
@@ -106,7 +110,9 @@ public class ReceivingThread extends Thread {
 
         synchronized (Streamlet.sequence) {
             System.out.println("Epoch " + Streamlet.epoch.get() + "Started");
-            if (Utils.isLeader(Streamlet.epoch.get(), Streamlet.nodeId, Streamlet.nodes.size())) {
+
+            if (Utils.isLeader(Streamlet.epoch.get(), nodeId, Streamlet.nodes.size())) {
+                generateRandomTransctions();
                 Block block = null;
                 try {
                     block = Streamlet.blockTree.pruposeBlock();
@@ -115,7 +121,7 @@ public class ReceivingThread extends Thread {
                 }
 
                 Message m = Message.builder().type(Type.PROPOSE).sequence(Streamlet.sequence.get())
-                        .sender(Streamlet.nodeId).content(block).build();
+                        .sender(nodeId).content(block).build();
                 Streamlet.sequence.incrementAndGet();
                 Broadcast(m);
                 System.out.println("Broadcasting block " + block);
@@ -141,5 +147,24 @@ public class ReceivingThread extends Thread {
             }
         }
     }
+
+    private void generateRandomTransctions(){
+        List<Transaction> transactions = new ArrayList<>();
+        Random r = ThreadLocalRandom.current();
+        for (int i = 0; i < Streamlet.nodesList.size(); i++) {
+            transactions.add(new Transaction(8080 + nodeId,
+                    Integer.valueOf(Streamlet.nodesList.get(i).split(":")[1]),
+                    r.nextInt(),
+                    epoch.get()));
+        }
+        blockTree.addUnverifiedTransactions(transactions);
+
+        Message m = Message.builder().type(Type.TRANSACTION).sequence(Streamlet.sequence.get())
+                .sender(nodeId).content(transactions).build();
+        Streamlet.sequence.incrementAndGet();
+        BroadcastExceptX(m, List.of(nodeId));
+    }
+
+
 
 }

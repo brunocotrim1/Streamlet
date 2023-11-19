@@ -4,22 +4,22 @@ import fcul.tdf.Streamlet;
 import fcul.tdf.Utils;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class BlockTree {
-    public static Map<Integer, List<Block>> BlockTree = new HashMap<>();
+    public static Map<Integer, List<Block>> blockTree = new HashMap<>();
     public Map<String, List<Integer>> epochVotes = new HashMap<>();
+    public static List<Transaction> unverifiedTransactions = new ArrayList<>();
 
     public synchronized boolean addBlock(Block block, int sender) {
         try {
             block.reset();
-            if (block.epoch == 0 && fcul.tdf.objects.BlockTree.BlockTree.containsKey(0)){
+            if (block.epoch == 0 && fcul.tdf.objects.BlockTree.blockTree.containsKey(0)) {
                 return false;
             }
             if (block.epoch == 0 && Utils.isLeader(0, sender, Streamlet.nodesList.size())) {
                 List<Block> blockList = new ArrayList<>();
                 blockList.add(block);
-                BlockTree.put(0, blockList);
+                blockTree.put(0, blockList);
                 return true;
             }
             if (!Utils.isLeader(block.epoch, sender, Streamlet.nodesList.size())) {
@@ -32,22 +32,22 @@ public class BlockTree {
             if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
                 List<Block> blockList = new ArrayList<>();
                 blockList.add(block);
-                BlockTree.put(0, blockList);
+                blockTree.put(0, blockList);
             } else {
                 //Se o tamanho do block for de uma cadeia imediatamente a seguir à maior cadeia
-                if (BlockTree.containsKey(block.getLength())) {
-                    List<Block> blockList = BlockTree.get(block.getLength());
+                if (blockTree.containsKey(block.getLength())) {
+                    List<Block> blockList = blockTree.get(block.getLength());
                     blockList.add(block);
                 } else {
                     List<Block> blockList = new ArrayList<>();
                     blockList.add(block);
-                    BlockTree.put(block.getLength(), blockList);
+                    blockTree.put(block.getLength(), blockList);
                 }
 
             }
-            System.out.println("Added block to tree" + "size: " + BlockTree.size());
+            //System.out.println("Added block to tree" + "size: " + blockTree.size());
             checkFinalized(longestNotarizedChain());
-            System.out.println("BlockTree " + BlockTree);
+            //System.out.println("BlockTree " + blockTree);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -66,17 +66,17 @@ public class BlockTree {
 
         // Check if the last three epochs are consecutive.
         if ((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)) {
-            System.out.println("FINALIZED CHAIN" + longestChain.subList(0,longestChain.size()-1));
+            System.out.println("FINALIZED CHAIN" + longestChain.subList(0, longestChain.size() - 1));
         }
     }
 
 
     public List<Block> longestNotarizedChain() {
         refreshVotes();
-        return RecursiveLongestNotarizedChain(0, BlockTree, null);
+        return RecursiveLongestNotarizedChain(0, blockTree, null);
     }
 
-    private  List<Block> RecursiveLongestNotarizedChain(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
+    private List<Block> RecursiveLongestNotarizedChain(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
 /*        if (lastBlock == null && index != 0) {
             lastBlock = blockMap.get(index).get(0);
         }*/
@@ -139,7 +139,7 @@ public class BlockTree {
         refreshVotes();
         boolean found = false;
         Block block = (Block) content.getContent();
-        for (List<Block> blocks : BlockTree.values()) {
+        for (List<Block> blocks : blockTree.values()) {
             for (Block b : blocks) {
                 if (b.equals(block) && !b.votes.contains(sender)) {
                     b.votes.add(sender);
@@ -170,12 +170,12 @@ public class BlockTree {
 //                }
 //            }
 //        }
-        for (List<Block> blocks : BlockTree.values()) {
-            for(Block block : blocks){
-                if(epochVotes.containsKey(Base64.getEncoder().encodeToString(block.hashBlock()))){
+        for (List<Block> blocks : blockTree.values()) {
+            for (Block block : blocks) {
+                if (epochVotes.containsKey(Base64.getEncoder().encodeToString(block.hashBlock()))) {
                     List<Integer> votes = epochVotes.get(Base64.getEncoder().encodeToString(block.hashBlock()));
-                    for(int vote : votes){
-                        if(!block.votes.contains(vote)){
+                    for (int vote : votes) {
+                        if (!block.votes.contains(vote)) {
                             block.votes.add(vote);
                         }
                     }
@@ -196,6 +196,41 @@ public class BlockTree {
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
         return Block.builder().epoch(Streamlet.epoch.get()).length(longestChain.size())
+                .transactions(getUnverifiedTransactions())
                 .previousHash(longestChain.get(longestChain.size() - 1).hashBlock()).build();
     }
+
+    public synchronized List<Transaction> getUnverifiedTransactions() {
+        try {
+            System.out.println("Unverified transactions" + unverifiedTransactions);
+            ArrayList<Transaction> unverifiedNotProposed = new ArrayList<>();
+            for (Transaction t : unverifiedTransactions) {
+                boolean found = false;
+                for (List<Block> blocks : blockTree.values()) {
+                    for (Block b : blocks) {
+                        if (b.getTransactions() != null && b.getTransactions().contains(t)) {
+                            found = true;
+                            break;
+                        }
+                    }
+                }
+                if (!found) {
+                    unverifiedNotProposed.add(t);
+                }
+            }
+            return unverifiedNotProposed;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return Collections.emptyList();
+        }
+    }
+
+    public void addUnverifiedTransactions(List<Transaction> transactions) {
+        for (Transaction transaction : transactions) {
+            if (!unverifiedTransactions.contains(transaction)) {
+                unverifiedTransactions.add(transaction);
+            }
+        }
+    }
+
 }

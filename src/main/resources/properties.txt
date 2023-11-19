@@ -1,5 +1,5 @@
-nodes = [0.0.0.0:8080,0.0.0.0:8081,0.0.0.0:8082,0.0.0.0:8083]
-epochDelta = 5
+nodes = [0.0.0.0:8080,0.0.0.0:8081,0.0.0.0:8082]
+epochDelta = 10
 ,0.0.0.0:8082,0.0.0.0:8083
 
 ####BUG DOS VOTOS TEM DE TER EM CONTA  O HASH DO BLOCO E NAO O EPOCH

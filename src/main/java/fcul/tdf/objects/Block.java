@@ -6,10 +6,7 @@ import lombok.Data;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.Queue;
+import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 @Data
@@ -18,7 +15,7 @@ public class Block implements java.io.Serializable {
     private byte[] previousHash = new byte[32];
     int epoch;
     private int length;
-    private ArrayList<Transaction> transactions;
+    private List<Transaction> transactions;
     Queue<Integer> votes = new ConcurrentLinkedQueue<Integer>();
 
 
@@ -51,6 +48,7 @@ public class Block implements java.io.Serializable {
                 "epoch=" + epoch +
                 ", length=" + length +
                 ", votes=" + votes+
+                ", transactions=" + transactions +
                 '}';
     }
 

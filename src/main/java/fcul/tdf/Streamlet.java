@@ -1,10 +1,7 @@
 package fcul.tdf;
 
 import fcul.tdf.enums.Type;
-import fcul.tdf.objects.BlockTree;
-import fcul.tdf.objects.Message;
-import fcul.tdf.objects.Node;
-import fcul.tdf.objects.ReceivingThread;
+import fcul.tdf.objects.*;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,6 +29,8 @@ public class Streamlet {
     public static final AtomicInteger sequence = new AtomicInteger(0);
     public static Map<Integer, Message> messageHistory = new HashMap<>();
     public static BlockTree blockTree = new BlockTree();
+
+
 
     public static void main(String[] args) throws IOException {
         readArgs(args);
