@@ -16,7 +16,6 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
 
 import static fcul.tdf.Utils.isLeader;
-
 public class Streamlet {
     public static List<String> nodesList;
     public static int epochDelta = 0;
