@@ -202,7 +202,6 @@ public class BlockTree {
 
     public synchronized List<Transaction> getUnverifiedTransactions() {
         try {
-            System.out.println("Unverified transactions" + unverifiedTransactions);
             ArrayList<Transaction> unverifiedNotProposed = new ArrayList<>();
             for (Transaction t : unverifiedTransactions) {
                 boolean found = false;
