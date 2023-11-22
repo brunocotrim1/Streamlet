@@ -54,7 +54,6 @@ public class ReceivingThread extends Thread {
         if (Streamlet.messageHistory.get(m.getSender()) != null &&
                 Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence()) {
             // Se ja tivermos visto a mensagem, nao fazemos nada
-            // System.out.println("Message already processed");
             return;
         }
         if (m.getType() != Type.ALIVE) {
@@ -78,7 +77,7 @@ public class ReceivingThread extends Thread {
                     blockTree.blockTree.put(0, new ArrayList<>(Arrays.asList(new Block[]{(Block) m.getContent()})));
                     Streamlet.epoch.getAndIncrement();
                     initiateEpoch((Instant) m.getAdditionalInfo());
-                }else if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
+                } else if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
                     System.out.println("Sending VOTE" + (Block) m.getContent());
                     synchronized (Streamlet.sequence) {
                         Broadcast(Message.builder().type(Type.VOTE)
@@ -89,7 +88,7 @@ public class ReceivingThread extends Thread {
                 }
                 break;
             case VOTE:
-                System.out.println("Received VOTE + " + m.getContent());
+                System.out.println("Received VOTE from " + m.sender + " : " + m.getContent());
                 BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
                         , List.of(m.getSender(), nodeId));
                 Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
@@ -109,9 +108,9 @@ public class ReceivingThread extends Thread {
     public void epoch() {
 
         synchronized (Streamlet.sequence) {
-            System.out.println("Epoch " + Streamlet.epoch.get() + "Started");
+            System.out.println("Epoch " + Streamlet.epoch.get() + " Started");
 
-            if (Utils.isLeader(Streamlet.epoch.get(), nodeId, Streamlet.nodes.size())) {
+            if (Utils.isLeader(Streamlet.epoch.get(), nodeId)) {
                 generateRandomTransctions();
                 Block block = null;
                 try {
@@ -148,7 +147,7 @@ public class ReceivingThread extends Thread {
         }
     }
 
-    private void generateRandomTransctions(){
+    private void generateRandomTransctions() {
         List<Transaction> transactions = new ArrayList<>();
         Random r = ThreadLocalRandom.current();
         for (int i = 0; i < Streamlet.nodesList.size(); i++) {
@@ -164,7 +163,6 @@ public class ReceivingThread extends Thread {
         Streamlet.sequence.incrementAndGet();
         BroadcastExceptX(m, List.of(nodeId));
     }
-
 
 
 }

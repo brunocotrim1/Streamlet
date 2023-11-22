@@ -61,7 +61,7 @@ public class Streamlet {
         }
         System.out.println("All nodes connected");
         System.out.println("Starting consensus");
-        if (isLeader(0, nodeId, nodesList.size())) {
+        if (isLeader(0, nodeId)) {
             System.out.println("I am the leader - Broadcasting genesis block");
             firstGenesisBlock();
         }
@@ -74,6 +74,7 @@ public class Streamlet {
             Message m = Message.builder().type(Type.PROPOSE).sender(nodeId).sequence(sequence.get())
                     .content(Utils.getGenesisBlock()).additionalInfo(Instant.now().plusSeconds(5)).build();
             Utils.Broadcast(m);
+            Streamlet.sequence.incrementAndGet();
             System.out.println("Broadcasted genesis block");
         }
     }

@@ -16,13 +16,13 @@ public class BlockTree {
             if (block.epoch == 0 && fcul.tdf.objects.BlockTree.blockTree.containsKey(0)) {
                 return false;
             }
-            if (block.epoch == 0 && Utils.isLeader(0, sender, Streamlet.nodesList.size())) {
+            if (block.epoch == 0 && Utils.isLeader(0, sender)) {
                 List<Block> blockList = new ArrayList<>();
                 blockList.add(block);
                 blockTree.put(0, blockList);
                 return true;
             }
-            if (!Utils.isLeader(block.epoch, sender, Streamlet.nodesList.size())) {
+            if (!Utils.isLeader(block.epoch, sender)) {
                 return false;
             }
             List<Block> longestChain = longestNotarizedChain();

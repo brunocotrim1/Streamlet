@@ -8,14 +8,21 @@ import fcul.tdf.objects.Transaction;
 
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
-import java.util.List;
+import java.util.*;
 
 public class Utils {
 
-    public static boolean isLeader(int epoch, int leader, int nodeSize) {
-        int hash = (epoch) % nodeSize;
-        return hash == leader;
+    private static final Random epochRandom = new Random(1234);
+    private static final Map<Integer, Integer> epochLeaders = new HashMap<>();
+
+
+    public static boolean isLeader(int epoch, int leader) {
+        if(epochLeaders.containsKey(epoch)) {
+            return epochLeaders.get(epoch) == leader;
+        }
+        int leaderId = epochRandom.nextInt(Streamlet.nodesList.size());
+        epochLeaders.put(epoch, leaderId);
+        return leaderId == leader;
     }
 
     public static void Broadcast(Message message) {
