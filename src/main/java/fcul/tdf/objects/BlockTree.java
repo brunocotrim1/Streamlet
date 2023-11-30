@@ -1,14 +1,22 @@
 package fcul.tdf.objects;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonObject;
 import fcul.tdf.Streamlet;
 import fcul.tdf.Utils;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class BlockTree {
     public static Map<Integer, List<Block>> blockTree = new HashMap<>();
     public Map<String, List<Integer>> epochVotes = new HashMap<>();
     public static List<Transaction> unverifiedTransactions = new ArrayList<>();
+
+    public static Block lastFinalizedBlock = null;
 
     public synchronized boolean addBlock(Block block, int sender) {
         try {
@@ -46,7 +54,7 @@ public class BlockTree {
 
             }
             //System.out.println("Added block to tree" + "size: " + blockTree.size());
-            checkFinalized(longestNotarizedChain());
+
             //System.out.println("BlockTree " + blockTree);
             return true;
         } catch (Exception e) {
@@ -55,8 +63,37 @@ public class BlockTree {
         }
     }
 
-    private void checkFinalized(List<Block> longestChain) {
-        if (longestChain.size() < 4) {
+    public void checkFinalized() {
+        List<Block> longestChain = longestNotarizedChain();
+        System.out.println("longestChain" + longestChain);
+        System.out.println("lastBlock" + lastFinalizedBlock);
+        System.out.println("blockTree" + blockTree);
+        if (longestChain.size() == 0) {
+            List<Block> longestChain1 = longestNotarizedChain();
+            System.out.println("longestChain" + longestChain1);
+            System.out.println("lastBlock" + lastFinalizedBlock);
+            System.out.println("blockTree" + blockTree);
+            return;
+        }
+
+        if(longestChain.size() >4){
+            Block lastBlock = longestChain.get(longestChain.size() - 1);
+            int lastEpoch = longestChain.get(longestChain.size() - 1).getEpoch();
+            int secondLastEpoch = longestChain.get(longestChain.size() - 2).getEpoch();
+            int thirdLastEpoch = longestChain.get(longestChain.size() - 3).getEpoch();
+            if ((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)){
+                System.out.println("FINALIZED CHAIN" + longestChain.subList(0, longestChain.size() - 1));
+                writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
+                Block lasBlock = longestChain.get(longestChain.size() - 1);
+                finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
+            }
+        }else if (lastFinalizedBlock !=null && lastFinalizedBlock.epoch == longestChain.get(0).epoch-1){
+            System.out.println("FINALIZED CHAIN" + longestChain.subList(0, longestChain.size() - 1));
+            writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
+            Block lasBlock = longestChain.get(longestChain.size() - 1);
+            finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
+        }
+/*        if (longestChain.size() < 4 || lastBlock.epoch == longestChain.get(0).epoch-1) {
             return;
         }
         Block lastBlock = longestChain.get(longestChain.size() - 1);
@@ -65,23 +102,44 @@ public class BlockTree {
         int thirdLastEpoch = longestChain.get(longestChain.size() - 3).getEpoch();
 
         // Check if the last three epochs are consecutive.
-        if ((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)) {
+        if (((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)) ||
+                lastEpoch == lastBlock.epoch + 1) {
             System.out.println("FINALIZED CHAIN" + longestChain.subList(0, longestChain.size() - 1));
-        }
+            writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
+            Block lasBlock = longestChain.get(longestChain.size() - 1);
+            finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
+        }*/
     }
 
+    public static void finalizeBlockTree(List<Block> finalizedBlocks,Block lastBlock) {
+        Map<Integer, List<Block>> finalizedBlockTree = new HashMap<>();
+        for (List<Block> blocks : blockTree.values()) {
+            for (Block b : blocks) {
+                if (!finalizedBlocks.contains(b)) {
+                    unverifiedTransactions.addAll(b.getTransactions());
+                }
+            }
+        }
+        BlockTree.lastFinalizedBlock = finalizedBlocks.get(finalizedBlocks.size() - 1);
+        List<Block> lastBlockList = new ArrayList<>();
+        lastBlockList.add(lastBlock);
+        finalizedBlockTree.put(lastBlock.getLength(), lastBlockList);
+        blockTree = finalizedBlockTree;
+    }
 
     public List<Block> longestNotarizedChain() {
         refreshVotes();
-        return RecursiveLongestNotarizedChain(0, blockTree, null);
+        if (lastFinalizedBlock != null) {
+            return RecursiveLongestNotarizedChain(blockTree.keySet()
+                    .stream().mapToInt(Integer::intValue).min().getAsInt(), blockTree, lastFinalizedBlock);
+        } else {
+            return RecursiveLongestNotarizedChain(0, blockTree, null);
+        }
     }
 
     private List<Block> RecursiveLongestNotarizedChain(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
-/*        if (lastBlock == null && index != 0) {
-            lastBlock = blockMap.get(index).get(0);
-        }*/
         if (blockMap.size() == 1) {
-            return blockMap.get(0);
+            return blockMap.values().stream().collect(Collectors.toList()).get(0);
         }
         if (index == 0) {
             ArrayList<Block> blockList = new ArrayList<>();
@@ -92,6 +150,9 @@ public class BlockTree {
 
         if (index == blockMap.size()) {
             return Collections.emptyList(); // Return an empty list for an empty map
+        }
+        if(blockMap.get(index) == null){
+            return Collections.emptyList();
         }
 
         List<List<Block>> chains = new ArrayList<>();
@@ -192,10 +253,14 @@ public class BlockTree {
         System.out.println();
     }
 
-    public synchronized Block pruposeBlock() {
+    public Block pruposeBlock() {
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
-        return Block.builder().epoch(Streamlet.epoch.get()).length(longestChain.size())
+        System.out.println("Last block " + lastFinalizedBlock);
+        System.out.println("BlockTree " + blockTree);
+        System.out.println("Longest chain " + longestChain);
+        return Block.builder().epoch(Streamlet.epoch.get())
+                .length(longestChain.get(longestChain.size() - 1).getLength() + 1)
                 .transactions(getUnverifiedTransactions())
                 .previousHash(longestChain.get(longestChain.size() - 1).hashBlock()).build();
     }
@@ -224,7 +289,7 @@ public class BlockTree {
         }
     }
 
-    public void addUnverifiedTransactions(List<Transaction> transactions) {
+    public synchronized void addUnverifiedTransactions(List<Transaction> transactions) {
         for (Transaction transaction : transactions) {
             if (!unverifiedTransactions.contains(transaction)) {
                 unverifiedTransactions.add(transaction);
@@ -232,4 +297,35 @@ public class BlockTree {
         }
     }
 
+    public void writeBlocksIntoFile(List<Block> blocks) {
+        StringBuilder sb = new StringBuilder();
+        for (Block block : blocks) {
+            JsonObject jsonObject = new JsonObject();
+
+            // Append your own variables
+            jsonObject.addProperty("previousHash", bytesToHexString(block.getPreviousHash()));
+            jsonObject.addProperty("epoch", block.getEpoch());
+            jsonObject.addProperty("length", block.getLength());
+            jsonObject.addProperty("votes", block.getVotes() == null ? "[]" : block.getVotes().toString());
+            jsonObject.addProperty("transactions", block.getTransactions() == null ? "[]" :
+                    block.getTransactions().toString());
+            jsonObject.addProperty("hash", bytesToHexString(block.hashBlock()));
+
+            sb.append(jsonObject.toString() + ",\n");
+        }
+        try (FileWriter writer = new FileWriter(Streamlet.nodeFileName, true)) {
+            writer.write(sb.toString() + "\n");
+            writer.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private static String bytesToHexString(byte[] bytes) {
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            hexString.append(String.format("%02X", b));
+        }
+        return hexString.toString();
+    }
 }

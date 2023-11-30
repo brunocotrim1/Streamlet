@@ -106,10 +106,12 @@ public class ReceivingThread extends Thread {
     }
 
     public void epoch() {
-
         synchronized (Streamlet.sequence) {
+            if(Streamlet.epoch.get() == 6){
+                System.out.println();
+            }
+            blockTree.checkFinalized();
             System.out.println("Epoch " + Streamlet.epoch.get() + " Started");
-
             if (Utils.isLeader(Streamlet.epoch.get(), nodeId)) {
                 generateRandomTransctions();
                 Block block = null;

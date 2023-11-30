@@ -47,8 +47,6 @@ public class Block implements java.io.Serializable {
         return "B(" +
                 "epoch=" + epoch +
                 ", length=" + length +
-                ", votes=" + votes+
-                ", transactions=" + transactions +
                 '}';
     }
 

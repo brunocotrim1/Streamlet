@@ -1,21 +1,26 @@
 package fcul.tdf;
 
 import fcul.tdf.enums.Type;
-import fcul.tdf.objects.*;
+import fcul.tdf.objects.BlockTree;
+import fcul.tdf.objects.Message;
+import fcul.tdf.objects.Node;
+import fcul.tdf.objects.ReceivingThread;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.stream.Stream;
 
 import static fcul.tdf.Utils.isLeader;
+
 public class Streamlet {
     public static List<String> nodesList;
     public static int epochDelta = 0;
@@ -29,7 +34,7 @@ public class Streamlet {
     public static Map<Integer, Message> messageHistory = new HashMap<>();
     public static BlockTree blockTree = new BlockTree();
 
-
+    public static String nodeFileName;
 
     public static void main(String[] args) throws IOException {
         readArgs(args);
@@ -69,8 +74,8 @@ public class Streamlet {
 
     }
 
-    private static void firstGenesisBlock(){
-        synchronized (sequence){
+    private static void firstGenesisBlock() {
+        synchronized (sequence) {
             Message m = Message.builder().type(Type.PROPOSE).sender(nodeId).sequence(sequence.get())
                     .content(Utils.getGenesisBlock()).additionalInfo(Instant.now().plusSeconds(5)).build();
             Utils.Broadcast(m);
@@ -109,6 +114,13 @@ public class Streamlet {
         }
         try {
             nodeId = Integer.parseInt(args[0]);
+            nodeFileName = "node" + nodeId + ".json";
+            try {
+                // Delete the file if it exists
+                Files.deleteIfExists(Paths.get(nodeFileName));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         } catch (NumberFormatException e) {
             System.err.println("Invalid node ID provided. Please provide an integer.");
             System.exit(-1);
