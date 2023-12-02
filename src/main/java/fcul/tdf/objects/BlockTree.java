@@ -53,9 +53,6 @@ public class BlockTree {
                 }
 
             }
-            //System.out.println("Added block to tree" + "size: " + blockTree.size());
-
-            //System.out.println("BlockTree " + blockTree);
             return true;
         } catch (Exception e) {
             e.printStackTrace();
@@ -64,18 +61,8 @@ public class BlockTree {
     }
 
     public void checkFinalized() {
+        System.out.println();
         List<Block> longestChain = longestNotarizedChain();
-        System.out.println("longestChain" + longestChain);
-        System.out.println("lastBlock" + lastFinalizedBlock);
-        System.out.println("blockTree" + blockTree);
-        if (longestChain.size() == 0) {
-            List<Block> longestChain1 = longestNotarizedChain();
-            System.out.println("longestChain" + longestChain1);
-            System.out.println("lastBlock" + lastFinalizedBlock);
-            System.out.println("blockTree" + blockTree);
-            return;
-        }
-
         if(longestChain.size() >4){
             Block lastBlock = longestChain.get(longestChain.size() - 1);
             int lastEpoch = longestChain.get(longestChain.size() - 1).getEpoch();
@@ -93,30 +80,20 @@ public class BlockTree {
             Block lasBlock = longestChain.get(longestChain.size() - 1);
             finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
         }
-/*        if (longestChain.size() < 4 || lastBlock.epoch == longestChain.get(0).epoch-1) {
-            return;
-        }
-        Block lastBlock = longestChain.get(longestChain.size() - 1);
-        int lastEpoch = longestChain.get(longestChain.size() - 1).getEpoch();
-        int secondLastEpoch = longestChain.get(longestChain.size() - 2).getEpoch();
-        int thirdLastEpoch = longestChain.get(longestChain.size() - 3).getEpoch();
-
-        // Check if the last three epochs are consecutive.
-        if (((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)) ||
-                lastEpoch == lastBlock.epoch + 1) {
-            System.out.println("FINALIZED CHAIN" + longestChain.subList(0, longestChain.size() - 1));
-            writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
-            Block lasBlock = longestChain.get(longestChain.size() - 1);
-            finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
-        }*/
+        System.out.println();
     }
 
     public static void finalizeBlockTree(List<Block> finalizedBlocks,Block lastBlock) {
         Map<Integer, List<Block>> finalizedBlockTree = new HashMap<>();
         for (List<Block> blocks : blockTree.values()) {
             for (Block b : blocks) {
+                if (b.getTransactions() == null) {
+                    continue;
+                }
                 if (!finalizedBlocks.contains(b)) {
                     unverifiedTransactions.addAll(b.getTransactions());
+                }else {
+                    unverifiedTransactions.removeAll(b.getTransactions());
                 }
             }
         }
@@ -219,18 +196,6 @@ public class BlockTree {
     }
 
     public void refreshVotes() {
-//        for (int epoch : epochVotes.keySet()) {
-//            for (List<Block> blocks : BlockTree.values()) {
-//                for (Block b : blocks) {
-//                    for (int i : epochVotes.get(epoch)) {
-//                        if (!b.votes.contains(i)) {
-//                            b.votes.add(i);
-//                        }
-//                    }
-//                   // epochVotes.remove(epoch);
-//                }
-//            }
-//        }
         for (List<Block> blocks : blockTree.values()) {
             for (Block block : blocks) {
                 if (epochVotes.containsKey(Base64.getEncoder().encodeToString(block.hashBlock()))) {
@@ -245,20 +210,11 @@ public class BlockTree {
         }
     }
 
-    public void printFinalizedChain() {
-        List<Block> longestChain = longestNotarizedChain();
-        for (Block b : longestChain) {
-            System.out.print(b.toString() + "--->");
-        }
-        System.out.println();
-    }
+
 
     public Block pruposeBlock() {
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
-        System.out.println("Last block " + lastFinalizedBlock);
-        System.out.println("BlockTree " + blockTree);
-        System.out.println("Longest chain " + longestChain);
         return Block.builder().epoch(Streamlet.epoch.get())
                 .length(longestChain.get(longestChain.size() - 1).getLength() + 1)
                 .transactions(getUnverifiedTransactions())
