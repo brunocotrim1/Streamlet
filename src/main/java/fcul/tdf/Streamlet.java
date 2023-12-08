@@ -3,7 +3,6 @@ package fcul.tdf;
 import fcul.tdf.enums.Type;
 import fcul.tdf.objects.BlockTree;
 import fcul.tdf.objects.Message;
-import fcul.tdf.objects.Node;
 import fcul.tdf.objects.ReceivingThread;
 
 import java.io.IOException;

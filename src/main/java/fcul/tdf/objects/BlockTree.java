@@ -63,6 +63,9 @@ public class BlockTree {
     public void checkFinalized() {
         System.out.println();
         List<Block> longestChain = longestNotarizedChain();
+        if (longestChain.isEmpty()) {
+            return;
+        }
         if(longestChain.size() >4){
             Block lastBlock = longestChain.get(longestChain.size() - 1);
             int lastEpoch = longestChain.get(longestChain.size() - 1).getEpoch();
@@ -84,6 +87,9 @@ public class BlockTree {
     }
 
     public static void finalizeBlockTree(List<Block> finalizedBlocks,Block lastBlock) {
+        if(finalizedBlocks.isEmpty()){
+            return;
+        }
         Map<Integer, List<Block>> finalizedBlockTree = new HashMap<>();
         for (List<Block> blocks : blockTree.values()) {
             for (Block b : blocks) {
@@ -105,6 +111,7 @@ public class BlockTree {
     }
 
     public List<Block> longestNotarizedChain() {
+        //System.out.println(blockTree);
         refreshVotes();
         if (lastFinalizedBlock != null) {
             return RecursiveLongestNotarizedChain(blockTree.keySet()
@@ -213,6 +220,9 @@ public class BlockTree {
 
 
     public Block pruposeBlock() {
+        if(Streamlet.epoch.get() == 7){
+            System.out.println();
+        }
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
         return Block.builder().epoch(Streamlet.epoch.get())

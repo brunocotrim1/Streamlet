@@ -1,7 +1,8 @@
-package fcul.tdf.objects;
+package fcul.tdf;
 
 import fcul.tdf.Streamlet;
 import fcul.tdf.enums.Type;
+import fcul.tdf.objects.Message;
 import lombok.Getter;
 
 import java.io.IOException;
@@ -45,6 +46,9 @@ public class Node extends Thread {
 
     private boolean networkSend(Message message, String[] address) {
         try {
+            if(Streamlet.nodeId == 0 && Streamlet.epoch.get() > 6 && Streamlet.epoch.get() < 10) {
+                Thread.sleep(5000);
+            }
             clientSocket = new Socket(address[0], Integer.parseInt(address[1]));
             outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
             outputStream.writeObject(message);
@@ -58,6 +62,8 @@ public class Node extends Thread {
             } catch (InterruptedException interruptedException) {
                 interruptedException.printStackTrace();
             }
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
         return false;
     }

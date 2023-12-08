@@ -1,9 +1,7 @@
 package fcul.tdf;
 
-import fcul.tdf.enums.Type;
 import fcul.tdf.objects.Block;
 import fcul.tdf.objects.Message;
-import fcul.tdf.objects.Node;
 import fcul.tdf.objects.Transaction;
 
 import java.security.MessageDigest;

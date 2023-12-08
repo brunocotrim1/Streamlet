@@ -53,7 +53,6 @@ public class ReceivingThread extends Thread {
         //   System.out.println("Processing message " + m);
         if (Streamlet.messageHistory.get(m.getSender()) != null &&
                 Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence()) {
-            // Se ja tivermos visto a mensagem, nao fazemos nada
             return;
         }
         if (m.getType() != Type.ALIVE) {
@@ -68,6 +67,9 @@ public class ReceivingThread extends Thread {
             case PROPOSE:
                 // BlockTree.addBlock((Block) message.content);
                 System.out.println("Received PROPOSE " + (Block) m.getContent());
+                if (((Block) m.getContent()).epoch ==8){
+System.out.println();
+                }
                 Streamlet.messageHistory.put(m.getSender(), m);
                 if (m.getSender() != nodeId)
                     BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
@@ -106,29 +108,33 @@ public class ReceivingThread extends Thread {
     }
 
     public void epoch() {
-        synchronized (Streamlet.sequence) {
-            if(Streamlet.epoch.get() == 6){
-                System.out.println();
-            }
-            blockTree.checkFinalized();
-            System.out.println("Epoch " + Streamlet.epoch.get() + " Started");
-            if (Utils.isLeader(Streamlet.epoch.get(), nodeId)) {
-                generateRandomTransctions();
-                Block block = null;
-                try {
-                    block = Streamlet.blockTree.pruposeBlock();
-                } catch (Exception e) {
-                    e.printStackTrace();
+        try {
+            synchronized (Streamlet.sequence) {
+                if (Streamlet.epoch.get() == 6) {
+                    System.out.println();
+                }
+                blockTree.checkFinalized();
+                System.out.println("Epoch " + Streamlet.epoch.get() + " Started");
+                if (Utils.isLeader(Streamlet.epoch.get(), nodeId)) {
+                    generateRandomTransctions();
+                    Block block = null;
+                    try {
+                        block = Streamlet.blockTree.pruposeBlock();
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+
+                    Message m = Message.builder().type(Type.PROPOSE).sequence(Streamlet.sequence.get())
+                            .sender(nodeId).content(block).build();
+                    Streamlet.sequence.incrementAndGet();
+                    Broadcast(m);
+                    System.out.println("Broadcasting block " + block);
                 }
 
-                Message m = Message.builder().type(Type.PROPOSE).sequence(Streamlet.sequence.get())
-                        .sender(nodeId).content(block).build();
-                Streamlet.sequence.incrementAndGet();
-                Broadcast(m);
-                System.out.println("Broadcasting block " + block);
+                Streamlet.epoch.getAndIncrement();
             }
-
-            Streamlet.epoch.getAndIncrement();
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
