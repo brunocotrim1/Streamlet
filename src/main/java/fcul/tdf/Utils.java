@@ -12,16 +12,33 @@ public class Utils {
 
     private static final Random epochRandom = new Random(1234);
     private static final Map<Integer, Integer> epochLeaders = new HashMap<>();
+    public static int confusion_start =1;
+    public static int confusion_duration = 8;
 
-
-    public static boolean isLeader(int epoch, int leader) {
+/*    public static boolean isLeader(int epoch, int leader) {
         if(epochLeaders.containsKey(epoch)) {
             return epochLeaders.get(epoch) == leader;
         }
         int leaderId = epochRandom.nextInt(Streamlet.nodesList.size());
         epochLeaders.put(epoch, leaderId);
         return leaderId == leader;
+    }*/
+
+
+    public static boolean isLeader(int epoch, int leader) {
+        if(epoch < confusion_start || epoch >= confusion_start + confusion_duration-1){
+            if(epochLeaders.containsKey(epoch)) {
+                return epochLeaders.get(epoch) == leader;
+            }
+            int leaderId = epochRandom.nextInt(Streamlet.nodesList.size());
+            epochLeaders.put(epoch, leaderId);
+            return leaderId == leader;
+        }else{
+            epochLeaders.put(epoch, epoch % Streamlet.nodesList.size());
+            return (epoch % Streamlet.nodesList.size()) == leader;
+        }
     }
+
 
     public static void Broadcast(Message message) {
        // if (message.getType() != Type.ECHO)

@@ -9,17 +9,19 @@ import fcul.tdf.Utils;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
 public class BlockTree {
     public static Map<Integer, List<Block>> blockTree = new HashMap<>();
     public Map<String, List<Integer>> epochVotes = new HashMap<>();
-    public static List<Transaction> unverifiedTransactions = new ArrayList<>();
+    public static ConcurrentLinkedQueue<Transaction> unverifiedTransactions = new ConcurrentLinkedQueue<>();
 
     public static Block lastFinalizedBlock = null;
 
     public synchronized boolean addBlock(Block block, int sender) {
         try {
+            boolean voted = true;
             block.reset();
             if (block.epoch == 0 && fcul.tdf.objects.BlockTree.blockTree.containsKey(0)) {
                 return false;
@@ -34,8 +36,13 @@ public class BlockTree {
                 return false;
             }
             List<Block> longestChain = longestNotarizedChain();
-            if (!Arrays.equals(longestChain.get(longestChain.size() - 1).hashBlock(), block.getPreviousHash())) {
+/*            if (!Arrays.equals(longestChain.get(longestChain.size() - 1).hashBlock(), block.getPreviousHash())) {
                 return false;
+            }*/
+            if(longestChain.get(longestChain.size() - 1).getLength() >= block.getLength()){
+                System.out.println(longestChain.get(longestChain.size() - 1));
+                System.out.println(block.getLength());
+                voted = false;
             }
             if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
                 List<Block> blockList = new ArrayList<>();
@@ -51,14 +58,16 @@ public class BlockTree {
                     blockList.add(block);
                     blockTree.put(block.getLength(), blockList);
                 }
-
             }
-            return true;
+            return voted;
         } catch (Exception e) {
             e.printStackTrace();
             return false;
         }
     }
+
+
+
 
     public void checkFinalized() {
         System.out.println();
@@ -220,9 +229,7 @@ public class BlockTree {
 
 
     public Block pruposeBlock() {
-        if(Streamlet.epoch.get() == 7){
-            System.out.println();
-        }
+        System.out.println(blockTree);
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
         return Block.builder().epoch(Streamlet.epoch.get())

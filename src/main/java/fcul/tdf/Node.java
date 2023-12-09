@@ -10,6 +10,9 @@ import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.util.concurrent.ConcurrentLinkedDeque;
 
+import static fcul.tdf.Utils.confusion_duration;
+import static fcul.tdf.Utils.confusion_start;
+
 public class Node extends Thread {
     private Socket clientSocket;
     @Getter
@@ -30,14 +33,22 @@ public class Node extends Thread {
         while (true) {
             try {
                 if (!messageQueue.isEmpty()) {
-                    Message message = messageQueue.poll();
-                    if (networkSend(message, address)) {
-                        //System.out.println("Sending message " + message + " to " + nodeId);
-                    } else {
-                        messageQueue.addFirst(message);
+
+                    if (Streamlet.epoch.get() < confusion_start ||
+                            Streamlet.epoch.get() >= confusion_start + confusion_duration - 1) {
+                        Message message = messageQueue.poll();
+                        if (networkSend(message, address)) {
+                            //System.out.println("Sending message " + message + " to " + nodeId);
+                        } else {
+                            messageQueue.addFirst(message);
+                        }
+                        Thread.sleep(10);
+
+                    }else{
+                        Thread.sleep(1000);
                     }
-                    Thread.sleep(10);
                 }
+
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
@@ -46,9 +57,6 @@ public class Node extends Thread {
 
     private boolean networkSend(Message message, String[] address) {
         try {
-            if(Streamlet.nodeId == 0 && Streamlet.epoch.get() > 6 && Streamlet.epoch.get() < 10) {
-                Thread.sleep(5000);
-            }
             clientSocket = new Socket(address[0], Integer.parseInt(address[1]));
             outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
             outputStream.writeObject(message);
@@ -62,8 +70,6 @@ public class Node extends Thread {
             } catch (InterruptedException interruptedException) {
                 interruptedException.printStackTrace();
             }
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
         }
         return false;
     }
