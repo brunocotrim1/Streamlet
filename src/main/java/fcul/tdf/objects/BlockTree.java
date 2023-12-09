@@ -40,8 +40,6 @@ public class BlockTree {
                 return false;
             }*/
             if(longestChain.get(longestChain.size() - 1).getLength() >= block.getLength()){
-                System.out.println(longestChain.get(longestChain.size() - 1));
-                System.out.println(block.getLength());
                 voted = false;
             }
             if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
