@@ -68,12 +68,10 @@ public class BlockTree implements Serializable {
 
 
     public void checkFinalized() {
-        System.out.println(blockTree);
         List<Block> longestChain = longestNotarizedChain();
         if (longestChain.isEmpty()) {
             return;
         }
-        System.out.println(longestChain);
         if(longestChain.size() >4){
             Block lastBlock = longestChain.get(longestChain.size() - 1);
             int lastEpoch = longestChain.get(longestChain.size() - 1).getEpoch();
@@ -132,7 +130,7 @@ public class BlockTree implements Serializable {
         if (blockMap.size() == 1) {
             return blockMap.values().stream().collect(Collectors.toList()).get(0);
         }
-        if (index == 0) {
+        if (index == 0 ) {
             ArrayList<Block> blockList = new ArrayList<>();
             blockList.addAll(blockMap.get(0));
             blockList.addAll(RecursiveLongestNotarizedChain(index + 1, blockMap, blockMap.get(index).get(0)));
@@ -227,7 +225,6 @@ public class BlockTree implements Serializable {
 
 
     public Block pruposeBlock() {
-        System.out.println(blockTree);
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
         return Block.builder().epoch(Streamlet.epoch.get())
