@@ -46,7 +46,7 @@ public class ReceivingThread extends Thread {
                 inputStream.close();
                 clientSocket.close();
             }else{
-                synchronized (executorService) {
+                synchronized (blockTree) {
                     ReconnectMessage r = ReconnectMessage.builder()
                             .lastFinalizedBlock(BlockTree.lastFinalizedBlock)
                             .unverifiedTransactions(BlockTree.unverifiedTransactions)
@@ -63,6 +63,7 @@ public class ReceivingThread extends Thread {
                     outputStream.writeObject(r);
                     inputStream.close();
                     clientSocket.close();
+                    Thread.sleep(1000);
                 }
             }
 
@@ -72,13 +73,17 @@ public class ReceivingThread extends Thread {
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
 
     }
 
-    private void processMessage(Message m) {
+    private void processMessage(Message m) throws InterruptedException {
 
             if(reconnect){
+                processMessage(m);
+                Thread.sleep(300);
                 return;
             }
             if(m.getType() == RECONNECT){

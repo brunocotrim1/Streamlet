@@ -227,6 +227,7 @@ public class BlockTree implements Serializable {
     public Block pruposeBlock() {
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
+        System.out.println(longestChain);
         return Block.builder().epoch(Streamlet.epoch.get())
                 .length(longestChain.get(longestChain.size() - 1).getLength() + 1)
                 .transactions(getUnverifiedTransactions())

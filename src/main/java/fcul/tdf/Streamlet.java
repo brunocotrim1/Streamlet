@@ -33,7 +33,8 @@ public class Streamlet {
     public static BlockTree blockTree = new BlockTree();
 
     public static String nodeFileName;
-    public static boolean reconnect = false;
+    public static volatile boolean reconnect = false;
+
     public static void main(String[] args) throws IOException {
         readArgs(args);
         readProperies();
@@ -49,7 +50,7 @@ public class Streamlet {
             executor.execute(node);
         }
 
-        if(!reconnect) {
+        if (!reconnect) {
             while (ReceivingThread.getAlive() != nodesList.size()) {
                 try {
                     Thread.sleep(1000);
@@ -68,43 +69,45 @@ public class Streamlet {
                 System.out.println("I am the leader - Broadcasting genesis block");
                 firstGenesisBlock();
             }
-        }else{
-            System.out.println("Reconnecting to the network");
-            try {
-                Socket clientSocket;
-                ObjectOutputStream outputStream;
-                clientSocket = new Socket("0.0.0.0", 8080);
-                outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-                ReconnectMessage message = ReconnectMessage.builder()
-                        .node(nodeId)
-                        .build();
-                outputStream.writeObject(message);
-                ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
-                ReconnectMessage reconnectMessage = (ReconnectMessage) inputStream.readObject();
-
-                BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
-                BlockTree.unverifiedTransactions = reconnectMessage.getUnverifiedTransactions();
-                BlockTree.epochVotes = reconnectMessage.getEpochVotes();
-                BlockTree.blockTree = reconnectMessage.getBlockTree();
-                epoch = reconnectMessage.getEpoch();
-                Utils.epochLeaders = reconnectMessage.getEpochLeaders();
-                Utils.epochRandom = reconnectMessage.getEpochRandom();
-                //messageHistory = reconnectMessage.getMessageHistory();
-                reconnect = false;
-                ReceivingThread.initiateEpoch(reconnectMessage.getNextEpoch());
-                Utils.Broadcast(Message.builder().sender(nodeId).type(Type.RECONNECT).build());
-                inputStream.close();
-                outputStream.flush();
-                outputStream.close();
-                clientSocket.close();
-            } catch (IOException e) {
+        } else {
+            synchronized (blockTree) {
+                System.out.println("Reconnecting to the network");
                 try {
-                    Thread.sleep(100);
-                } catch (InterruptedException interruptedException) {
-                    interruptedException.printStackTrace();
+                    Socket clientSocket;
+                    ObjectOutputStream outputStream;
+                    clientSocket = new Socket("0.0.0.0", 8080);
+                    outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                    ReconnectMessage message = ReconnectMessage.builder()
+                            .node(nodeId)
+                            .build();
+                    outputStream.writeObject(message);
+                    ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
+                    ReconnectMessage reconnectMessage = (ReconnectMessage) inputStream.readObject();
+
+                    BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
+                    BlockTree.unverifiedTransactions = reconnectMessage.getUnverifiedTransactions();
+                    BlockTree.epochVotes = reconnectMessage.getEpochVotes();
+                    BlockTree.blockTree = reconnectMessage.getBlockTree();
+                    epoch = reconnectMessage.getEpoch();
+                    Utils.epochLeaders = reconnectMessage.getEpochLeaders();
+                    Utils.epochRandom = reconnectMessage.getEpochRandom();
+                    //messageHistory = reconnectMessage.getMessageHistory();
+                    reconnect = false;
+                    ReceivingThread.initiateEpoch(reconnectMessage.getNextEpoch());
+                    Utils.Broadcast(Message.builder().sender(nodeId).type(Type.RECONNECT).build());
+                    inputStream.close();
+                    outputStream.flush();
+                    outputStream.close();
+                    clientSocket.close();
+                } catch (IOException e) {
+                    try {
+                        Thread.sleep(100);
+                    } catch (InterruptedException interruptedException) {
+                        interruptedException.printStackTrace();
+                    }
+                } catch (ClassNotFoundException e) {
+                    throw new RuntimeException(e);
                 }
-            } catch (ClassNotFoundException e) {
-                throw new RuntimeException(e);
             }
         }
     }
