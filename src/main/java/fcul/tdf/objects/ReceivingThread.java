@@ -83,7 +83,6 @@ public class ReceivingThread extends Thread {
 
             if(reconnect){
                 processMessage(m);
-                Thread.sleep(300);
                 return;
             }
             if(m.getType() == RECONNECT){
@@ -158,6 +157,7 @@ public class ReceivingThread extends Thread {
             synchronized (Streamlet.sequence) {
                 blockTree.refreshVotes();
                 blockTree.checkFinalized();
+                System.out.println();
                 System.out.println("Epoch " + Streamlet.epoch.get() + " Started");
                 if (Utils.isLeader(Streamlet.epoch.get(), nodeId)) {
                     generateRandomTransctions();

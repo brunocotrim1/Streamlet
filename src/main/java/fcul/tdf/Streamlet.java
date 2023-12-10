@@ -92,9 +92,9 @@ public class Streamlet {
                     Utils.epochLeaders = reconnectMessage.getEpochLeaders();
                     Utils.epochRandom = reconnectMessage.getEpochRandom();
                     //messageHistory = reconnectMessage.getMessageHistory();
-                    reconnect = false;
                     ReceivingThread.initiateEpoch(reconnectMessage.getNextEpoch());
                     Utils.Broadcast(Message.builder().sender(nodeId).type(Type.RECONNECT).build());
+                    reconnect = false;
                     inputStream.close();
                     outputStream.flush();
                     outputStream.close();
