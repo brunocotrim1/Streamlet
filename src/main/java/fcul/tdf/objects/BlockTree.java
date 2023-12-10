@@ -1,20 +1,20 @@
 package fcul.tdf.objects;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonObject;
 import fcul.tdf.Streamlet;
 import fcul.tdf.Utils;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.stream.Collectors;
 
-public class BlockTree {
+
+public class BlockTree implements Serializable {
     public static Map<Integer, List<Block>> blockTree = new HashMap<>();
-    public Map<String, List<Integer>> epochVotes = new HashMap<>();
+    public static Map<String, List<Integer>> epochVotes = new HashMap<>();
     public static ConcurrentLinkedQueue<Transaction> unverifiedTransactions = new ConcurrentLinkedQueue<>();
 
     public static Block lastFinalizedBlock = null;
@@ -39,7 +39,7 @@ public class BlockTree {
 /*            if (!Arrays.equals(longestChain.get(longestChain.size() - 1).hashBlock(), block.getPreviousHash())) {
                 return false;
             }*/
-            if(longestChain.get(longestChain.size() - 1).getLength() >= block.getLength()){
+            if(!longestChain.isEmpty() && longestChain.get(longestChain.size() - 1).getLength() >= block.getLength()){
                 voted = false;
             }
             if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
@@ -68,29 +68,29 @@ public class BlockTree {
 
 
     public void checkFinalized() {
-        System.out.println();
+        System.out.println(blockTree);
         List<Block> longestChain = longestNotarizedChain();
         if (longestChain.isEmpty()) {
             return;
         }
+        System.out.println(longestChain);
         if(longestChain.size() >4){
             Block lastBlock = longestChain.get(longestChain.size() - 1);
             int lastEpoch = longestChain.get(longestChain.size() - 1).getEpoch();
             int secondLastEpoch = longestChain.get(longestChain.size() - 2).getEpoch();
             int thirdLastEpoch = longestChain.get(longestChain.size() - 3).getEpoch();
             if ((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)){
-                System.out.println("FINALIZED CHAIN" + longestChain.subList(0, longestChain.size() - 1));
+                System.out.println("FINALIZED CHAIN: " + longestChain.subList(0, longestChain.size() - 1));
                 writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
                 Block lasBlock = longestChain.get(longestChain.size() - 1);
                 finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
             }
         }else if (lastFinalizedBlock !=null && lastFinalizedBlock.epoch == longestChain.get(0).epoch-1){
-            System.out.println("FINALIZED CHAIN" + longestChain.subList(0, longestChain.size() - 1));
+            System.out.println("FINALIZED CHAIN: " + longestChain.subList(0, longestChain.size() - 1));
             writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
             Block lasBlock = longestChain.get(longestChain.size() - 1);
             finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
         }
-        System.out.println();
     }
 
     public static void finalizeBlockTree(List<Block> finalizedBlocks,Block lastBlock) {

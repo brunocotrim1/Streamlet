@@ -1,6 +1,5 @@
 package fcul.tdf;
 
-import fcul.tdf.Streamlet;
 import fcul.tdf.enums.Type;
 import fcul.tdf.objects.Message;
 import lombok.Getter;

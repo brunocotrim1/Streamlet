@@ -2,6 +2,7 @@ package fcul.tdf;
 
 import fcul.tdf.objects.Block;
 import fcul.tdf.objects.Message;
+import fcul.tdf.objects.ReconnectMessage;
 import fcul.tdf.objects.Transaction;
 
 import java.security.MessageDigest;
@@ -10,10 +11,10 @@ import java.util.*;
 
 public class Utils {
 
-    private static final Random epochRandom = new Random(1234);
-    private static final Map<Integer, Integer> epochLeaders = new HashMap<>();
+    public static Random epochRandom = new Random(1234);
+    public static Map<Integer, Integer> epochLeaders = new HashMap<>();
     public static int confusion_start =1;
-    public static int confusion_duration = 8;
+    public static int confusion_duration = 0;
 
 /*    public static boolean isLeader(int epoch, int leader) {
         if(epochLeaders.containsKey(epoch)) {
@@ -60,6 +61,8 @@ public class Utils {
             }
         }
     }
+
+
 
     public static Block getGenesisBlock() {
         return Block.builder()

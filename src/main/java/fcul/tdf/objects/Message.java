@@ -16,4 +16,5 @@ public class Message implements Serializable {
     int sender;
     long sequence;
     Object additionalInfo;
+    boolean isReconnected;
 }

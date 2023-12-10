@@ -3,9 +3,11 @@ package fcul.tdf.objects;
 import fcul.tdf.Streamlet;
 import fcul.tdf.Utils;
 import fcul.tdf.enums.Type;
+import lombok.Synchronized;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.Socket;
 import java.time.Instant;
 import java.util.*;
@@ -14,6 +16,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Stream;
 
 import static fcul.tdf.Streamlet.*;
 import static fcul.tdf.Utils.*;
@@ -22,21 +25,49 @@ import static fcul.tdf.enums.Type.*;
 public class ReceivingThread extends Thread {
     private Socket clientSocket;
     private static AtomicInteger alive = new AtomicInteger(0);
-    private ScheduledExecutorService executorService;
+    public static ScheduledExecutorService executorService;
 
     public ReceivingThread(Socket clientSocket) {
         this.clientSocket = clientSocket;
     }
 
+    public static Instant nextEpoch;
+
     @Override
     public void run() {
         try {
             ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
-            Message message = (Message) inputStream.readObject();
-            //System.out.println(message);
-            processMessage(message);
-            inputStream.close();
-            clientSocket.close();
+
+            Object o = inputStream.readObject();
+            if(o instanceof Message){
+                Message message = (Message) o;
+                //System.out.println(message);
+                processMessage(message);
+                inputStream.close();
+                clientSocket.close();
+            }else{
+                synchronized (executorService) {
+                    ReconnectMessage r = ReconnectMessage.builder()
+                            .lastFinalizedBlock(BlockTree.lastFinalizedBlock)
+                            .unverifiedTransactions(BlockTree.unverifiedTransactions)
+                            .epochVotes(BlockTree.epochVotes)
+                            .blockTree(BlockTree.blockTree)
+                            .epoch(epoch)
+                            .epochLeaders(epochLeaders)
+                            .epochRandom(epochRandom)
+                            .messageHistory(messageHistory)
+                            .nextEpoch(nextEpoch)
+                            .node(-1)
+                            .build();
+                    ObjectOutputStream outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                    outputStream.writeObject(r);
+                    inputStream.close();
+                    clientSocket.close();
+                }
+            }
+
+
+
 
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
@@ -46,6 +77,14 @@ public class ReceivingThread extends Thread {
     }
 
     private void processMessage(Message m) {
+
+            if(reconnect){
+                return;
+            }
+            if(m.getType() == RECONNECT){
+                messageHistory.remove(m.getSender());
+                return;
+            }
 
             if (m.getType() == Type.ECHO && m.getSender() != nodeId) {
                 processMessage((Message) m.getContent());
@@ -108,8 +147,9 @@ public class ReceivingThread extends Thread {
         return alive.get();
     }
 
-    public void epoch() {
+    public static void epoch() {
         try {
+            nextEpoch = Instant.now().plusSeconds(epochDelta);
             synchronized (Streamlet.sequence) {
                 blockTree.refreshVotes();
                 blockTree.checkFinalized();
@@ -138,12 +178,12 @@ public class ReceivingThread extends Thread {
     }
 
 
-    public void initiateEpoch(Instant epochStart) {
+    public static void initiateEpoch(Instant epochStart) {
         executorService = Executors.newScheduledThreadPool(1);
         while (true) {
             Instant currentInstant = Instant.now();
             if (currentInstant.isAfter(epochStart)) {
-                executorService.scheduleAtFixedRate(this::epoch, 0, Streamlet.epochDelta, TimeUnit.SECONDS);
+                executorService.scheduleAtFixedRate(ReceivingThread::epoch, 0, Streamlet.epochDelta, TimeUnit.SECONDS);
                 break; // Exit the loop when the instant has arrived
             }
             try {
@@ -154,7 +194,7 @@ public class ReceivingThread extends Thread {
         }
     }
 
-    private void generateRandomTransctions() {
+    private static void generateRandomTransctions() {
         List<Transaction> transactions = new ArrayList<>();
         Random r = ThreadLocalRandom.current();
         for (int i = 0; i < Streamlet.nodesList.size(); i++) {

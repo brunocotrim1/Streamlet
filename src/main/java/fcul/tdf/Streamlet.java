@@ -4,16 +4,18 @@ import fcul.tdf.enums.Type;
 import fcul.tdf.objects.BlockTree;
 import fcul.tdf.objects.Message;
 import fcul.tdf.objects.ReceivingThread;
+import fcul.tdf.objects.ReconnectMessage;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -23,10 +25,7 @@ import static fcul.tdf.Utils.isLeader;
 public class Streamlet {
     public static List<String> nodesList;
     public static int epochDelta = 0;
-    public static ConcurrentLinkedQueue<Message> messages = new ConcurrentLinkedQueue<>();
     public static Map<Integer, Node> nodes = new HashMap<>();
-    public static Map<Integer, ReceivingThread> receivers = new HashMap<>();
-    public static ExecutorService executor;
     public static int nodeId;
     public static AtomicInteger epoch = new AtomicInteger(0);
     public static final AtomicInteger sequence = new AtomicInteger(0);
@@ -34,7 +33,7 @@ public class Streamlet {
     public static BlockTree blockTree = new BlockTree();
 
     public static String nodeFileName;
-
+    public static boolean reconnect = false;
     public static void main(String[] args) throws IOException {
         readArgs(args);
         readProperies();
@@ -50,27 +49,64 @@ public class Streamlet {
             executor.execute(node);
         }
 
-
-        while (ReceivingThread.getAlive() != nodesList.size()) {
+        if(!reconnect) {
+            while (ReceivingThread.getAlive() != nodesList.size()) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
             try {
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                throw new RuntimeException(e);
+            }
+            System.out.println("All nodes connected");
+            System.out.println("Starting consensus");
+            if (isLeader(0, nodeId)) {
+                System.out.println("I am the leader - Broadcasting genesis block");
+                firstGenesisBlock();
+            }
+        }else{
+            System.out.println("Reconnecting to the network");
+            try {
+                Socket clientSocket;
+                ObjectOutputStream outputStream;
+                clientSocket = new Socket("0.0.0.0", 8080);
+                outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                ReconnectMessage message = ReconnectMessage.builder()
+                        .node(nodeId)
+                        .build();
+                outputStream.writeObject(message);
+                ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
+                ReconnectMessage reconnectMessage = (ReconnectMessage) inputStream.readObject();
+
+                BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
+                BlockTree.unverifiedTransactions = reconnectMessage.getUnverifiedTransactions();
+                BlockTree.epochVotes = reconnectMessage.getEpochVotes();
+                BlockTree.blockTree = reconnectMessage.getBlockTree();
+                epoch = reconnectMessage.getEpoch();
+                Utils.epochLeaders = reconnectMessage.getEpochLeaders();
+                Utils.epochRandom = reconnectMessage.getEpochRandom();
+                //messageHistory = reconnectMessage.getMessageHistory();
+                reconnect = false;
+                ReceivingThread.initiateEpoch(reconnectMessage.getNextEpoch());
+                Utils.Broadcast(Message.builder().sender(nodeId).type(Type.RECONNECT).build());
+                inputStream.close();
+                outputStream.flush();
+                outputStream.close();
+                clientSocket.close();
+            } catch (IOException e) {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException interruptedException) {
+                    interruptedException.printStackTrace();
+                }
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
             }
         }
-        try {
-            Thread.sleep(1000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println("All nodes connected");
-        System.out.println("Starting consensus");
-        if (isLeader(0, nodeId)) {
-            System.out.println("I am the leader - Broadcasting genesis block");
-            firstGenesisBlock();
-        }
-
-
     }
 
     private static void firstGenesisBlock() {
@@ -107,12 +143,13 @@ public class Streamlet {
     }
 
     private static void readArgs(String[] args) {
-        if (args.length != 1) {
-            System.err.println("Please provide a node ID as a command-line argument.");
+        if (args.length != 2) {
+            System.err.println("Please provide a node ID as a command-line argument Or reconnect 1/0");
             System.exit(-1);
         }
         try {
             nodeId = Integer.parseInt(args[0]);
+            reconnect = Integer.parseInt(args[1]) == 1;
             nodeFileName = "node" + nodeId + ".json";
             try {
                 // Delete the file if it exists
