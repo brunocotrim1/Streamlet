@@ -39,7 +39,6 @@ public class BlockTree implements Serializable {
             if (lastFinalizedBlock != null && lastFinalizedBlock.epoch >= block.epoch) {
                 return false;
             }
-
             List<List<Block>> longestNotarizedChains = longestNotarizedChains();
 
 
@@ -59,6 +58,13 @@ public class BlockTree implements Serializable {
                 //Se o tamanho do block for de uma cadeia imediatamente a seguir à maior cadeia
                 if (blockTree.containsKey(block.getLength())) {
                     List<Block> blockList = blockTree.get(block.getLength());
+                    for (Block b : blockList) {
+                        if (Arrays.equals(b.hashBlock(), block.hashBlock())) {
+                            System.out.println("Block already in the tree: "+ blockTree);
+
+                            return false;
+                        }
+                    }
                     blockList.add(block);
                 } else {
                     List<Block> blockList = new ArrayList<>();
@@ -83,7 +89,7 @@ public class BlockTree implements Serializable {
     }
 
 
-    public boolean checkFinalized(List<Block> longestChain) {
+    public synchronized boolean checkFinalized(List<Block> longestChain) {
         refreshVotes();
         if (longestChain.isEmpty()) {
             return false;
@@ -116,7 +122,7 @@ public class BlockTree implements Serializable {
         }*/
     }
 
-    public static void finalizeBlockTree(List<Block> finalizedBlocks, Block lastBlock) {
+    public synchronized static void finalizeBlockTree(List<Block> finalizedBlocks, Block lastBlock) {
         if (finalizedBlocks.isEmpty()) {
             return;
         }
@@ -379,8 +385,8 @@ public class BlockTree implements Serializable {
         List<List<Block>> longestNotarizedChains = longestNotarizedChains();
         List<Block> longestChain = longestNotarizedChains.isEmpty() ? null :
                 longestNotarizedChains.get(new Random().nextInt(longestNotarizedChains.size()));
-        System.out.println("PRUPOSING CHAINS" + longestNotarizedChains);
-        System.out.println(blockTree);
+/*        System.out.println("PRUPOSING CHAINS" + longestNotarizedChains);
+        System.out.println(blockTree);*/
 /*        System.out.println("PRUPOSING CHAINNN"+longestChain);
         System.out.println("Pruposing BLOCKTree"+ blockTree);*/
         return Block.builder().epoch(Streamlet.epoch.get())
