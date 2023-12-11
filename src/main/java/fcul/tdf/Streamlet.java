@@ -72,40 +72,50 @@ public class Streamlet {
         } else {
             synchronized (blockTree) {
                 System.out.println("Reconnecting to the network");
-                try {
-                    Socket clientSocket;
-                    ObjectOutputStream outputStream;
-                    clientSocket = new Socket("0.0.0.0", 8080);
-                    outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
-                    ReconnectMessage message = ReconnectMessage.builder()
-                            .node(nodeId)
-                            .build();
-                    outputStream.writeObject(message);
-                    ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
-                    ReconnectMessage reconnectMessage = (ReconnectMessage) inputStream.readObject();
+               int i = 0;
+               while (true){
 
-                   // BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
-                    BlockTree.unverifiedTransactions = reconnectMessage.getUnverifiedTransactions();
-                    BlockTree.epochVotes = reconnectMessage.getEpochVotes();
-                    BlockTree.blockTree = reconnectMessage.getBlockTree();
-                    epoch = reconnectMessage.getEpoch();
-                    Utils.epochLeaders = reconnectMessage.getEpochLeaders();
-                    Utils.epochRandom = reconnectMessage.getEpochRandom();
-                    //messageHistory = reconnectMessage.getMessageHistory();
-                    ReceivingThread.initiateEpoch(reconnectMessage.getNextEpoch());
-                    Utils.Broadcast(Message.builder().sender(nodeId).type(Type.RECONNECT).build());
-                    inputStream.close();
-                    outputStream.flush();
-                    outputStream.close();
-                    clientSocket.close();
-                } catch (IOException e) {
                     try {
-                        Thread.sleep(100);
-                    } catch (InterruptedException interruptedException) {
-                        interruptedException.printStackTrace();
+                        if (i%nodesList.size() == nodeId){
+                            i++;
+                            continue;
+                        }
+                        Socket clientSocket;
+                        ObjectOutputStream outputStream;
+                        clientSocket = new Socket(nodesList.get(i%nodesList.size()).split(":")[0], Integer.parseInt(nodesList.get(i%nodesList.size()).split(":")[1]));
+                        outputStream = new ObjectOutputStream(clientSocket.getOutputStream());
+                        ReconnectMessage message = ReconnectMessage.builder()
+                                .node(nodeId)
+                                .build();
+                        outputStream.writeObject(message);
+                        ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
+                        ReconnectMessage reconnectMessage = (ReconnectMessage) inputStream.readObject();
+
+                        // BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
+                        BlockTree.unverifiedTransactions = reconnectMessage.getUnverifiedTransactions();
+                        BlockTree.epochVotes = reconnectMessage.getEpochVotes();
+                        BlockTree.blockTree = reconnectMessage.getBlockTree();
+                        epoch = reconnectMessage.getEpoch();
+                        Utils.epochLeaders = reconnectMessage.getEpochLeaders();
+                        Utils.epochRandom = reconnectMessage.getEpochRandom();
+                        //messageHistory = reconnectMessage.getMessageHistory();
+                        ReceivingThread.initiateEpoch(reconnectMessage.getNextEpoch());
+                        Utils.Broadcast(Message.builder().sender(nodeId).type(Type.RECONNECT).build());
+                        inputStream.close();
+                        outputStream.flush();
+                        outputStream.close();
+                        clientSocket.close();
+                        break;
+                    } catch (IOException e) {
+                        try {
+                            Thread.sleep(100);
+                        } catch (InterruptedException interruptedException) {
+                            interruptedException.printStackTrace();
+                        }
+                    } catch (ClassNotFoundException e) {
+                        throw new RuntimeException(e);
                     }
-                } catch (ClassNotFoundException e) {
-                    throw new RuntimeException(e);
+                    i++;
                 }
             }
         }

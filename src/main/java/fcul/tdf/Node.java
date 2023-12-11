@@ -41,7 +41,7 @@ public class Node extends Thread {
                         } else {
                             messageQueue.addFirst(message);
                         }
-                        //Thread.sleep(10);
+                        Thread.sleep(10);
 
                     }else{
                         Thread.sleep(1000);
