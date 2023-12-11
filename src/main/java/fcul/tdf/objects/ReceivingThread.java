@@ -39,13 +39,13 @@ public class ReceivingThread extends Thread {
             ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
 
             Object o = inputStream.readObject();
-            if(o instanceof Message){
+            if (o instanceof Message) {
                 Message message = (Message) o;
                 //System.out.println(message);
                 processMessage(message);
                 inputStream.close();
                 clientSocket.close();
-            }else{
+            } else {
                 synchronized (blockTree) {
                     ReconnectMessage r = ReconnectMessage.builder()
                             .lastFinalizedBlock(BlockTree.lastFinalizedBlock)
@@ -68,8 +68,6 @@ public class ReceivingThread extends Thread {
             }
 
 
-
-
         } catch (IOException | ClassNotFoundException e) {
             e.printStackTrace();
             throw new RuntimeException(e);
@@ -81,69 +79,71 @@ public class ReceivingThread extends Thread {
 
     private void processMessage(Message m) throws InterruptedException {
 
-            if(reconnect){
-                processMessage(m);
-                return;
-            }
-            if(m.getType() == RECONNECT){
-                messageHistory.remove(m.getSender());
-                return;
-            }
+        if (m.getType() == RECONNECT) {
+            messageHistory.remove(m.getSender());
+            reconnect = false;
+            return;
+        }
+        if (reconnect) {
+            processMessage(m);
+            return;
+        }
 
-            if (m.getType() == Type.ECHO && m.getSender() != nodeId) {
-                processMessage((Message) m.getContent());
-                return;
-            }
-            //   System.out.println("Processing message " + m);
-            if (Streamlet.messageHistory.get(m.getSender()) != null &&
-                    Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence()) {
-                return;
-            }
-            if (m.getType() != Type.ALIVE) {
-                Streamlet.messageHistory.put(m.sender, m);
-            }
 
-            switch (m.getType()) {
-                case ALIVE:
-                    alive.incrementAndGet();
-                    break;
+        if (m.getType() == Type.ECHO && m.getSender() != nodeId) {
+            processMessage((Message) m.getContent());
+            return;
+        }
+        //   System.out.println("Processing message " + m);
+        if (Streamlet.messageHistory.get(m.getSender()) != null &&
+                Streamlet.messageHistory.get(m.getSender()).getSequence() >= m.getSequence()) {
+            return;
+        }
+        if (m.getType() != Type.ALIVE) {
+            Streamlet.messageHistory.put(m.sender, m);
+        }
 
-                case PROPOSE:
-                    // BlockTree.addBlock((Block) message.content);
-                    System.out.println("Received PROPOSE " + (Block) m.getContent());
-                    Streamlet.messageHistory.put(m.getSender(), m);
-                    if (m.getSender() != nodeId)
-                        BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
-                                , List.of(m.getSender(), nodeId));
-                    //Fazer broadcast a todos menos a quem produzio e a nos propriosSystem.out.println(m);
-                    if (BlockTree.verifyGenesisBlock((Block) m.getContent())) {
-                        blockTree.blockTree.put(0, new ArrayList<>(Arrays.asList(new Block[]{(Block) m.getContent()})));
-                        Streamlet.epoch.getAndIncrement();
-                        initiateEpoch((Instant) m.getAdditionalInfo());
-                    } else if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
-                        System.out.println("Sending VOTE" + (Block) m.getContent());
-                        synchronized (Streamlet.sequence) {
-                            Broadcast(Message.builder().type(Type.VOTE)
-                                    .sequence(Streamlet.sequence.get())
-                                    .sender(nodeId).content(m).build());
-                            Streamlet.sequence.incrementAndGet();
-                        }
-                    }else{
-                        System.out.println("Block not voted");
-                    }
-                    break;
-                case VOTE:
-                    System.out.println("Received VOTE from " + m.sender + " : " + m.getContent());
+        switch (m.getType()) {
+            case ALIVE:
+                alive.incrementAndGet();
+                break;
+
+            case PROPOSE:
+                // BlockTree.addBlock((Block) message.content);
+                System.out.println("Received PROPOSE " + (Block) m.getContent());
+                Streamlet.messageHistory.put(m.getSender(), m);
+                if (m.getSender() != nodeId)
                     BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
                             , List.of(m.getSender(), nodeId));
-                    Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
-                    break;
-                case TRANSACTION:
-                    List<Transaction> transactions = (List<Transaction>) m.getContent();
-                    blockTree.addUnverifiedTransactions(transactions);
-                    break;
+                //Fazer broadcast a todos menos a quem produzio e a nos propriosSystem.out.println(m);
+                if (BlockTree.verifyGenesisBlock((Block) m.getContent())) {
+                    blockTree.blockTree.put(0, new ArrayList<>(Arrays.asList(new Block[]{(Block) m.getContent()})));
+                    Streamlet.epoch.getAndIncrement();
+                    initiateEpoch((Instant) m.getAdditionalInfo());
+                } else if (Streamlet.blockTree.addBlock((Block) m.getContent(), m.sender)) {
+                    System.out.println("Sending VOTE" + (Block) m.getContent());
+                    synchronized (Streamlet.sequence) {
+                        Broadcast(Message.builder().type(Type.VOTE)
+                                .sequence(Streamlet.sequence.get())
+                                .sender(nodeId).content(m).build());
+                        Streamlet.sequence.incrementAndGet();
+                    }
+                } else {
+                    System.out.println("Block not voted");
+                }
+                break;
+            case VOTE:
+                System.out.println("Received VOTE from " + m.sender + " : " + m.getContent());
+                BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
+                        , List.of(m.getSender(), nodeId));
+                Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
+                break;
+            case TRANSACTION:
+                List<Transaction> transactions = (List<Transaction>) m.getContent();
+                blockTree.addUnverifiedTransactions(transactions);
+                break;
 
-            }
+        }
 
     }
 

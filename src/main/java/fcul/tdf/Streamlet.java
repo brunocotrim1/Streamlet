@@ -84,7 +84,7 @@ public class Streamlet {
                     ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
                     ReconnectMessage reconnectMessage = (ReconnectMessage) inputStream.readObject();
 
-                    BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
+                   // BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
                     BlockTree.unverifiedTransactions = reconnectMessage.getUnverifiedTransactions();
                     BlockTree.epochVotes = reconnectMessage.getEpochVotes();
                     BlockTree.blockTree = reconnectMessage.getBlockTree();
@@ -94,7 +94,6 @@ public class Streamlet {
                     //messageHistory = reconnectMessage.getMessageHistory();
                     ReceivingThread.initiateEpoch(reconnectMessage.getNextEpoch());
                     Utils.Broadcast(Message.builder().sender(nodeId).type(Type.RECONNECT).build());
-                    reconnect = false;
                     inputStream.close();
                     outputStream.flush();
                     outputStream.close();

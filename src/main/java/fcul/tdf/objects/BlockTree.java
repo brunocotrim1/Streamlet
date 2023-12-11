@@ -35,14 +35,14 @@ public class BlockTree implements Serializable {
             if (!Utils.isLeader(block.epoch, sender)) {
                 return false;
             }
-            if(lastFinalizedBlock != null && lastFinalizedBlock.epoch >= block.epoch){
+            if (lastFinalizedBlock != null && lastFinalizedBlock.epoch >= block.epoch) {
                 return false;
             }
             List<Block> longestChain = longestNotarizedChain();
 /*            if (!Arrays.equals(longestChain.get(longestChain.size() - 1).hashBlock(), block.getPreviousHash())) {
                 return false;
             }*/
-            if(!longestChain.isEmpty() && longestChain.get(longestChain.size() - 1).getLength() >= block.getLength()){
+            if (!longestChain.isEmpty() && longestChain.get(longestChain.size() - 1).getLength() >= block.getLength()) {
                 voted = false;
             }
             if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
@@ -68,8 +68,6 @@ public class BlockTree implements Serializable {
     }
 
 
-
-
     public void checkFinalized() {
         refreshVotes();
         List<Block> longestChain = longestNotarizedChain();
@@ -82,22 +80,21 @@ public class BlockTree implements Serializable {
 /*        System.out.println("Longest Chain: " + longestChain);
         System.out.println("Last Finalized Block: " + lastFinalizedBlock);*/
         longestChain = longestChain.stream().filter(b -> b.getEpoch() != 0).collect(Collectors.toList());
-        if(longestChain.size() >=3){
+        if (longestChain.size() >= 3) {
             Block lastBlock = longestChain.get(longestChain.size() - 1);
             int lastEpoch = longestChain.get(longestChain.size() - 1).getEpoch();
             int secondLastEpoch = longestChain.get(longestChain.size() - 2).getEpoch();
             int thirdLastEpoch = longestChain.get(longestChain.size() - 3).getEpoch();
-            if ((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)){
-                if(lastFinalizedBlock == null){
+            if ((lastEpoch - secondLastEpoch == 1) && (lastEpoch - thirdLastEpoch == 2)) {
+                if (lastFinalizedBlock == null) {
                     System.out.println("FINALIZED CHAIN: " + longestChain.subList(0, longestChain.size() - 1));
                 }
                 writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
                 Block lasBlock = longestChain.get(longestChain.size() - 1);
                 finalizeBlockTree(longestChain.subList(0, longestChain.size() - 1), lasBlock);
-                if(lastFinalizedBlock!= null){
+                if (lastFinalizedBlock != null) {
                     System.out.println("Finalized Block: " + lastFinalizedBlock);
                 }
-
 
 
             }
@@ -110,8 +107,8 @@ public class BlockTree implements Serializable {
         }*/
     }
 
-    public static void finalizeBlockTree(List<Block> finalizedBlocks,Block lastBlock) {
-        if(finalizedBlocks.isEmpty()){
+    public static void finalizeBlockTree(List<Block> finalizedBlocks, Block lastBlock) {
+        if (finalizedBlocks.isEmpty()) {
             return;
         }
         Map<Integer, List<Block>> finalizedBlockTree = new HashMap<>();
@@ -122,7 +119,7 @@ public class BlockTree implements Serializable {
                 }
                 if (!finalizedBlocks.contains(b)) {
                     unverifiedTransactions.addAll(b.getTransactions());
-                }else {
+                } else {
                     unverifiedTransactions.removeAll(b.getTransactions());
                 }
             }
@@ -143,10 +140,12 @@ public class BlockTree implements Serializable {
         if (lastFinalizedBlock != null) {
             List<Block> finalizedChain = new ArrayList<>();
             finalizedChain.add(lastFinalizedBlock);
-            finalizedChain.addAll(RecursiveLongestNotarizedChain(lastFinalizedBlock.getLength()+1,blockTree, lastFinalizedBlock));
+            finalizedChain.addAll(RecursiveLongestNotarizedChain(lastFinalizedBlock.getLength() + 1, blockTree, lastFinalizedBlock));
             return finalizedChain;
         } else {
-            return RecursiveLongestNotarizedChain(0, blockTree, null);
+            return RecursiveLongestNotarizedChain(blockTree.keySet().stream()
+                    .min(Integer::compareTo)
+                    .orElse(null), blockTree, null);
         }
     }
 
@@ -154,19 +153,25 @@ public class BlockTree implements Serializable {
         if (blockMap.size() == 1) {
             return blockMap.values().stream().collect(Collectors.toList()).get(0);
         }
-        if (index == 0 ) {
+        if (index == 0) {
             ArrayList<Block> blockList = new ArrayList<>();
             blockList.addAll(blockMap.get(0));
             blockList.addAll(RecursiveLongestNotarizedChain(index + 1, blockMap, blockMap.get(index).get(0)));
             return blockList;
         }
 
+        if(lastBlock == null){
+            lastBlock = blockMap.get(index).get(0);
+            index = index + 1;
+        }
+
+
         if (index > blockMap.keySet().stream()
                 .max(Integer::compareTo)
                 .orElse(null)) {
             return Collections.emptyList(); // Return an empty list for an empty map
         }
-        if(blockMap.get(index) == null){
+        if (blockMap.get(index) == null) {
             return RecursiveLongestNotarizedChain(index + 1, blockMap, lastBlock);
         }
 
@@ -176,6 +181,7 @@ public class BlockTree implements Serializable {
             if (block.epoch == 0) {
                 continue;
             }
+
             boolean equalToLast = Arrays.equals(block.getPreviousHash(), lastBlock.hashBlock());
             boolean isNotarized = isNotarized(block);
             if (Arrays.equals(block.getPreviousHash(), lastBlock.hashBlock()) && isNotarized(block)) {
@@ -217,14 +223,15 @@ public class BlockTree implements Serializable {
         Block block = (Block) content.getContent();
         for (List<Block> blocks : blockTree.values()) {
             for (Block b : blocks) {
-                if (b.equals(block) && !b.votes.contains(sender)) {
+                if (Arrays.equals(b.hashBlock(), block.hashBlock()) && !b.votes.contains(sender)) {
                     b.votes.add(sender);
+                    found = true;
                 }
             }
         }
         if (!found) {
-            if (epochVotes.containsKey(block.getEpoch())) {
-                epochVotes.get(block.getEpoch()).add(sender);
+            if (epochVotes.containsKey(Base64.getEncoder().encodeToString(block.hashBlock()))) {
+                    epochVotes.get(Base64.getEncoder().encodeToString(block.hashBlock())).add(sender);
             } else {
                 ArrayList<Integer> senders = new ArrayList<>();
                 senders.add(sender);
@@ -247,7 +254,6 @@ public class BlockTree implements Serializable {
             }
         }
     }
-
 
 
     public synchronized Block pruposeBlock() {
@@ -294,6 +300,9 @@ public class BlockTree implements Serializable {
     }
 
     public void writeBlocksIntoFile(List<Block> blocks) {
+        if (lastFinalizedBlock != null && blocks.get(0).getLength() != 0) {
+            blocks = blocks.subList(1, blocks.size());
+        }
         StringBuilder sb = new StringBuilder();
         for (Block block : blocks) {
             JsonObject jsonObject = new JsonObject();
