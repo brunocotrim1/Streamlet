@@ -9,6 +9,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 
 
@@ -199,7 +200,9 @@ public class BlockTree implements Serializable {
         for (List<Block> chain : chains) {
             if (chain.size() > longestChain.size()) {
                 longestChain = chain;
-            }
+            }/*else if(chain.size() == longestChain.size() && ThreadLocalRandom.current().nextBoolean()){
+                longestChain = chain;
+            }*/
         }
         return longestChain;
     }

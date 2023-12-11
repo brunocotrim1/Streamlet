@@ -22,9 +22,9 @@ public class ReconnectMessage implements java.io.Serializable {
     private Map<Integer, Message> messageHistory;
     private AtomicInteger epoch;
     private Instant nextEpoch;
-    private Map<String, List<Integer>> epochVotes = new HashMap<>();
-    private Map<Integer, List<Block>> blockTree = new HashMap<>();
-    private ConcurrentLinkedQueue<Transaction> unverifiedTransactions = new ConcurrentLinkedQueue<>();
-    private Block lastFinalizedBlock = null;
+    private Map<String, List<Integer>> epochVotes;
+    private Map<Integer, List<Block>> blockTree;
+    private ConcurrentLinkedQueue<Transaction> unverifiedTransactions;
+    private Block lastFinalizedBlock;
 }
 
