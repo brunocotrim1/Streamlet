@@ -60,7 +60,7 @@ public class BlockTree implements Serializable {
                     List<Block> blockList = blockTree.get(block.getLength());
                     for (Block b : blockList) {
                         if (Arrays.equals(b.hashBlock(), block.hashBlock())) {
-                            System.out.println("Block already in the tree: "+ blockTree);
+                            System.out.println("Block already in the tree: " + blockTree);
 
                             return false;
                         }
@@ -79,7 +79,7 @@ public class BlockTree implements Serializable {
         }
     }
 
-    public void finalizeChain(){
+    public void finalizeChain() {
         List<List<Block>> longestNotarizedChains = longestNotarizedChains();
         for (List<Block> chain : longestNotarizedChains) {
             if (checkFinalized(chain)) {
@@ -183,7 +183,7 @@ public class BlockTree implements Serializable {
             }
 
             return notarized;
-        }else {
+        } else {
             return RecursiveLongestNotarizedChains(blockTree.keySet().stream()
                     .min(Integer::compareTo)
                     .orElse(null), blockTree, null);
@@ -191,7 +191,7 @@ public class BlockTree implements Serializable {
     }
 
 
-    private List<List<Block>> RecursiveLongestNotarizedChains(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
+    private synchronized List<List<Block>> RecursiveLongestNotarizedChains(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
         if (blockMap.size() == 1) {
             return Collections.singletonList(blockMap.values().iterator().next());
         }
@@ -201,13 +201,13 @@ public class BlockTree implements Serializable {
             List<List<Block>> recursiveChains = RecursiveLongestNotarizedChains(index + 1,
                     blockMap, blockMap.get(index).get(0));
             for (Block block : blockMap.get(0)) {
-                for(List<Block> recursiveChain : recursiveChains){
+                for (List<Block> recursiveChain : recursiveChains) {
                     List<Block> chain = new ArrayList<>();
                     chain.add(block);
                     chain.addAll(recursiveChain);
                     chains.add(chain);
                 }
-                if(recursiveChains.isEmpty()){
+                if (recursiveChains.isEmpty()) {
                     List<Block> chain = new ArrayList<>();
                     chain.add(block);
                     chains.add(chain);
@@ -239,17 +239,18 @@ public class BlockTree implements Serializable {
             boolean isNotarized = isNotarized(block);
             if (Arrays.equals(block.getPreviousHash(), lastBlock.hashBlock()) && isNotarized(block)) {
                 List<List<Block>> recursiveChains = RecursiveLongestNotarizedChains(index + 1, blockMap, block);
-                for(List<Block> recursiveChain : recursiveChains){
+                for (List<Block> recursiveChain : recursiveChains) {
                     List<Block> chain = new ArrayList<>();
                     chain.add(block);
                     chain.addAll(recursiveChain);
                     chains.add(chain);
                 }
-                if(recursiveChains.isEmpty()){
+                if (recursiveChains.isEmpty()) {
                     List<Block> chain = new ArrayList<>();
                     chain.add(block);
                     chains.add(chain);
                 }
+                //System.out.println("Recursive List" + chains);
             }
         }
 
@@ -257,18 +258,16 @@ public class BlockTree implements Serializable {
         List<List<Block>> longestChains = new ArrayList<>();
 
         for (List<Block> chain : chains) {
-            if (chain.size() > maxLength) {
-                maxLength = chain.size();
-                longestChains.clear();
-                longestChains.add(chain);
-            } else if (chain.size() == maxLength) {
+            if (chain.size() >= maxLength) {
+                if (chain.size() > maxLength) {
+                    maxLength = chain.size();
+                    longestChains.clear();
+                }
                 longestChains.add(chain);
             }
         }
-
         return longestChains;
     }
-
 
 
     private List<Block> RecursiveLongestNotarizedChain(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
@@ -282,7 +281,7 @@ public class BlockTree implements Serializable {
             return blockList;
         }
 
-        if(lastBlock == null){
+        if (lastBlock == null) {
             lastBlock = blockMap.get(index).get(0);
             index = index + 1;
         }
@@ -355,7 +354,7 @@ public class BlockTree implements Serializable {
         }
         if (!found) {
             if (epochVotes.containsKey(Base64.getEncoder().encodeToString(block.hashBlock()))) {
-                    epochVotes.get(Base64.getEncoder().encodeToString(block.hashBlock())).add(sender);
+                epochVotes.get(Base64.getEncoder().encodeToString(block.hashBlock())).add(sender);
             } else {
                 ArrayList<Integer> senders = new ArrayList<>();
                 senders.add(sender);
