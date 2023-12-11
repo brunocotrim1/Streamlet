@@ -39,11 +39,16 @@ public class BlockTree implements Serializable {
             if (lastFinalizedBlock != null && lastFinalizedBlock.epoch >= block.epoch) {
                 return false;
             }
-            List<Block> longestChain = longestNotarizedChain();
+
+            List<List<Block>> longestNotarizedChains = longestNotarizedChains();
+
+
 /*            if (!Arrays.equals(longestChain.get(longestChain.size() - 1).hashBlock(), block.getPreviousHash())) {
                 return false;
             }*/
-            if (!longestChain.isEmpty() && longestChain.get(longestChain.size() - 1).getLength() >= block.getLength()) {
+            if (!longestNotarizedChains.isEmpty() &&
+                    longestNotarizedChains.get(0)
+                            .get(longestNotarizedChains.get(0).size() - 1).getLength() >= block.getLength()) {
                 voted = false;
             }
             if (Streamlet.epoch.get() == 0 && block.epoch == 0) {
@@ -68,18 +73,21 @@ public class BlockTree implements Serializable {
         }
     }
 
-
-    public void checkFinalized() {
-        refreshVotes();
-        List<Block> longestChain = longestNotarizedChain();
-        if (longestChain.isEmpty()) {
-            return;
+    public void finalizeChain(){
+        List<List<Block>> longestNotarizedChains = longestNotarizedChains();
+        for (List<Block> chain : longestNotarizedChains) {
+            if (checkFinalized(chain)) {
+                break;
+            }
         }
-/*        if(longestChain.get(0).getLength()==0){
-            longestChain.remove(0);
-        }*/
-/*        System.out.println("Longest Chain: " + longestChain);
-        System.out.println("Last Finalized Block: " + lastFinalizedBlock);*/
+    }
+
+
+    public boolean checkFinalized(List<Block> longestChain) {
+        refreshVotes();
+        if (longestChain.isEmpty()) {
+            return false;
+        }
         longestChain = longestChain.stream().filter(b -> b.getEpoch() != 0).collect(Collectors.toList());
         if (longestChain.size() >= 3) {
             Block lastBlock = longestChain.get(longestChain.size() - 1);
@@ -96,10 +104,10 @@ public class BlockTree implements Serializable {
                 if (lastFinalizedBlock != null) {
                     System.out.println("Finalized Block: " + lastFinalizedBlock);
                 }
-
-
+                return true;
             }
         }
+        return false;
       /*  }else if (lastFinalizedBlock !=null && lastFinalizedBlock.epoch == longestChain.get(0).epoch-1){
             System.out.println("FINALIZED CHAIN: " + longestChain.subList(0, longestChain.size() - 1));
             writeBlocksIntoFile(longestChain.subList(0, longestChain.size() - 1));
@@ -142,13 +150,120 @@ public class BlockTree implements Serializable {
             List<Block> finalizedChain = new ArrayList<>();
             finalizedChain.add(lastFinalizedBlock);
             finalizedChain.addAll(RecursiveLongestNotarizedChain(lastFinalizedBlock.getLength() + 1, blockTree, lastFinalizedBlock));
+            System.out.println("Recursive Return1" + RecursiveLongestNotarizedChains(lastFinalizedBlock.getLength() + 1, blockTree, lastFinalizedBlock));
             return finalizedChain;
         } else {
+            System.out.println("Recursive Return2" + RecursiveLongestNotarizedChains(blockTree.keySet().stream()
+                    .min(Integer::compareTo)
+                    .orElse(null), blockTree, null));
             return RecursiveLongestNotarizedChain(blockTree.keySet().stream()
                     .min(Integer::compareTo)
                     .orElse(null), blockTree, null);
         }
     }
+
+    public synchronized List<List<Block>> longestNotarizedChains() {
+        refreshVotes();
+        if (lastFinalizedBlock != null) {
+            List<List<Block>> notarized = new ArrayList<>();
+
+            List<List<Block>> chains = RecursiveLongestNotarizedChains(lastFinalizedBlock.getLength() + 1, blockTree, lastFinalizedBlock);
+
+            for (List<Block> chain : chains) {
+                List<Block> notarizedChain = new ArrayList<>();
+                notarizedChain.add(lastFinalizedBlock);
+                notarizedChain.addAll(chain);
+                notarized.add(notarizedChain);
+            }
+
+            return notarized;
+        }else {
+            return RecursiveLongestNotarizedChains(blockTree.keySet().stream()
+                    .min(Integer::compareTo)
+                    .orElse(null), blockTree, null);
+        }
+    }
+
+
+    private List<List<Block>> RecursiveLongestNotarizedChains(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
+        if (blockMap.size() == 1) {
+            return Collections.singletonList(blockMap.values().iterator().next());
+        }
+
+        if (index == 0) {
+            List<List<Block>> chains = new ArrayList<>();
+            List<List<Block>> recursiveChains = RecursiveLongestNotarizedChains(index + 1,
+                    blockMap, blockMap.get(index).get(0));
+            for (Block block : blockMap.get(0)) {
+                for(List<Block> recursiveChain : recursiveChains){
+                    List<Block> chain = new ArrayList<>();
+                    chain.add(block);
+                    chain.addAll(recursiveChain);
+                    chains.add(chain);
+                }
+                if(recursiveChains.isEmpty()){
+                    List<Block> chain = new ArrayList<>();
+                    chain.add(block);
+                    chains.add(chain);
+                }
+            }
+            return chains;
+        }
+
+        if (lastBlock == null) {
+            lastBlock = blockMap.get(index).get(0);
+            index = index + 1;
+        }
+
+        if (index > blockMap.keySet().stream().max(Integer::compareTo).orElse(null)) {
+            return Collections.emptyList(); // Return an empty list for an empty map
+        }
+
+        if (blockMap.get(index) == null) {
+            return RecursiveLongestNotarizedChains(index + 1, blockMap, lastBlock);
+        }
+
+        List<List<Block>> chains = new ArrayList<>();
+
+        for (Block block : blockMap.get(index)) {
+            if (block.epoch == 0) {
+                continue;
+            }
+            boolean equalToLast = Arrays.equals(block.getPreviousHash(), lastBlock.hashBlock());
+            boolean isNotarized = isNotarized(block);
+            if (Arrays.equals(block.getPreviousHash(), lastBlock.hashBlock()) && isNotarized(block)) {
+                List<List<Block>> recursiveChains = RecursiveLongestNotarizedChains(index + 1, blockMap, block);
+                for(List<Block> recursiveChain : recursiveChains){
+                    List<Block> chain = new ArrayList<>();
+                    chain.add(block);
+                    chain.addAll(recursiveChain);
+                    chains.add(chain);
+                }
+                if(recursiveChains.isEmpty()){
+                    List<Block> chain = new ArrayList<>();
+                    chain.add(block);
+                    chains.add(chain);
+                }
+            }
+        }
+
+        int maxLength = 0;
+        List<List<Block>> longestChains = new ArrayList<>();
+
+        for (List<Block> chain : chains) {
+            if (chain.size() > maxLength) {
+                maxLength = chain.size();
+                longestChains.clear();
+                longestChains.add(chain);
+            } else if (chain.size() == maxLength) {
+                longestChains.add(chain);
+            }
+        }
+
+        return longestChains;
+    }
+
+
 
     private List<Block> RecursiveLongestNotarizedChain(int index, Map<Integer, List<Block>> blockMap, Block lastBlock) {
         if (blockMap.size() == 1) {
@@ -261,7 +376,11 @@ public class BlockTree implements Serializable {
 
     public synchronized Block pruposeBlock() {
         refreshVotes();
-        List<Block> longestChain = longestNotarizedChain();
+        List<List<Block>> longestNotarizedChains = longestNotarizedChains();
+        List<Block> longestChain = longestNotarizedChains.isEmpty() ? null :
+                longestNotarizedChains.get(new Random().nextInt(longestNotarizedChains.size()));
+        System.out.println("PRUPOSING CHAINS" + longestNotarizedChains);
+        System.out.println(blockTree);
 /*        System.out.println("PRUPOSING CHAINNN"+longestChain);
         System.out.println("Pruposing BLOCKTree"+ blockTree);*/
         return Block.builder().epoch(Streamlet.epoch.get())

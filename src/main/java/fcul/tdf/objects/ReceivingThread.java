@@ -156,7 +156,7 @@ public class ReceivingThread extends Thread {
             nextEpoch = Instant.now().plusSeconds(epochDelta);
             synchronized (Streamlet.sequence) {
                 blockTree.refreshVotes();
-                blockTree.checkFinalized();
+                blockTree.finalizeChain();
                 System.out.println();
                 System.out.println("Epoch " + Streamlet.epoch.get() + " Started");
                 if (Utils.isLeader(Streamlet.epoch.get(), nodeId)) {

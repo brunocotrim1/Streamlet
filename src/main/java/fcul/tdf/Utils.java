@@ -14,7 +14,7 @@ public class Utils {
     public static Random epochRandom = new Random(1234);
     public static Map<Integer, Integer> epochLeaders = new HashMap<>();
     public static int confusion_start =2;
-    public static int confusion_duration = 3;
+    public static int confusion_duration = 10;
 
 /*    public static boolean isLeader(int epoch, int leader) {
         if(epochLeaders.containsKey(epoch)) {
