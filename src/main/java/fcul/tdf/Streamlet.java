@@ -91,6 +91,9 @@ public class Streamlet {
                         ObjectInputStream inputStream = new ObjectInputStream(clientSocket.getInputStream());
                         ReconnectMessage reconnectMessage = (ReconnectMessage) inputStream.readObject();
 
+
+                        Files.write(Paths.get(nodeFileName), reconnectMessage.getFinalizedFile());
+
                         // BlockTree.lastFinalizedBlock = reconnectMessage.getLastFinalizedBlock();
                         BlockTree.unverifiedTransactions = reconnectMessage.getUnverifiedTransactions();
                         BlockTree.epochVotes = reconnectMessage.getEpochVotes();

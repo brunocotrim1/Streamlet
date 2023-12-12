@@ -5,10 +5,13 @@ import fcul.tdf.Utils;
 import fcul.tdf.enums.Type;
 import lombok.Synchronized;
 
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.*;
 import java.util.concurrent.Executors;
@@ -57,6 +60,7 @@ public class ReceivingThread extends Thread {
                             .epochRandom(epochRandom)
                             .messageHistory(messageHistory)
                             .nextEpoch(nextEpoch)
+                            .finalizedFile(Files.readAllBytes(Paths.get(nodeFileName)))
                             .node(-1)
                             .build();
                     ObjectOutputStream outputStream = new ObjectOutputStream(clientSocket.getOutputStream());

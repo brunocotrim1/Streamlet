@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.ToString;
 
+import java.io.InputStream;
 import java.time.Instant;
 import java.util.HashMap;
 import java.util.List;
@@ -26,5 +27,6 @@ public class ReconnectMessage implements java.io.Serializable {
     private Map<Integer, List<Block>> blockTree;
     private ConcurrentLinkedQueue<Transaction> unverifiedTransactions;
     private Block lastFinalizedBlock;
+    private byte[] finalizedFile;
 }
 
