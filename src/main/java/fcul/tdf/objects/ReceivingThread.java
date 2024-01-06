@@ -137,7 +137,7 @@ public class ReceivingThread extends Thread {
                 }
                 break;
             case VOTE:
-                System.out.println("Received VOTE from " + m.sender + " : " + m.getContent());
+                System.out.println("Received VOTE from " + m.sender + " : " + ((Message) m.getContent()).getContent());
                 BroadcastExceptX(Message.builder().type(Type.ECHO).content(m).build()
                         , List.of(m.getSender(), nodeId));
                 Streamlet.blockTree.addVote((Message) m.getContent(), m.getSender());
